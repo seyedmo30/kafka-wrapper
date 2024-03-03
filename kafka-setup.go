@@ -2,6 +2,7 @@ package kafkawrapper
 
 import (
 	"context"
+
 	"time"
 
 	kafkaPachage "github.com/segmentio/kafka-go"
@@ -42,7 +43,7 @@ type kafkaWriter struct {
 
 var kafkaPublisherinstance kafkaWriter
 
-func (k kafkaConsumer) getter() kafkaReader {
+func (k *kafkaConsumer) getter() kafkaReader {
 
 	return kafkaConsumerinstance
 }
@@ -52,10 +53,46 @@ func (k kafkaPublisher) getter() kafkaWriter {
 	return kafkaPublisherinstance
 }
 
-func (k kafkaPublisher) setter(ctx context.Context , value []byte, key []byte, header []map[string][]byte)error{
+func (k *kafkaPublisher) close() error {
 
+	defer k.getter().KafkaWriter.Close()
+	// kafkaPachage.ACL
+	// kafkaPachage.Client
 
-	
+	// // Set up Kafka client configuration
+	// config := kafka.WriterConfig{
+	// 	Brokers: []string{"localhost:9092"}, // Kafka broker address
+	// }
+
+	// // Create a new Kafka client
+	// client := kafka.NewWriter(config)
+
+	// // Create a new Admin client
+	// adminClient := kafka.NewAdminClient(&kafka.Dialer{
+	// 	Timeout: 10, // Timeout in seconds
+	// })
+
+	// // Specify the topic to delete
+	// topicToDelete := "topic_name"
+
+	// // Delete the specified topic
+	// err := adminClient.DeleteTopics(topicToDelete)
+	// if err != nil {
+	// 	fmt.Fprintf(os.Stderr, "Error deleting topic: %v\n", err)
+	// 	os.Exit(1)
+	// }
+
+	// fmt.Printf("Topic '%s' deleted successfully.\n", topicToDelete)
+
+	// // Close the Kafka and Admin clients
+	// adminClient.Close()
+	// client.Close()
+
+	return nil
+}
+
+func (k kafkaPublisher) setter(ctx context.Context, value []byte, key []byte, header []map[string][]byte) error {
+
 	return nil
 }
 
@@ -85,7 +122,7 @@ func (k kafkaPublisher) publisherConnection() error {
 	return nil
 }
 
-func (k kafkaConsumer) consumerConnection() error {
+func (k *kafkaConsumer) consumerConnection() error {
 
 	dialer := &kafkaPachage.Dialer{
 		Timeout:   10 * time.Second,
@@ -113,7 +150,7 @@ func (k kafkaConsumer) consumerConnection() error {
 	return nil
 }
 
-func (k kafkaConsumer) consumerReconnection() error {
+func (k *kafkaConsumer) consumerReconnection() error {
 	// TODO
 	return nil
 }

@@ -5,10 +5,10 @@ import (
 	"strings"
 )
 
-type FirstClassFunc func(ctx context.Context, readMessage ReadMessageDTO) (WriteMessageDTO, error)
+func Run(ctx context.Context, kafkaConsumer kafkaConsumer, method FirstClassFunc, kafkaPubliosher kafkaPublisher, optionalConfiguration ...OptionalConfiguration) {
 
-func Run(ctx context.Context, kafkaConsumer kafkaConsumer, method FirstClassFunc, kafkaPubliosher kafkaPublisher) {
-
+	opt := validateOptionalConfiguration(optionalConfiguration...)
+	readMessageDTOCh := make(chan ReadMessageDTO, 50)
 	err := kafkaConsumer.consumerConnection()
 
 	if err != nil {
@@ -18,33 +18,46 @@ func Run(ctx context.Context, kafkaConsumer kafkaConsumer, method FirstClassFunc
 	}
 
 	go func() {
+		defer close(readMessageDTOCh)
+
 		for {
 
 			msg, err := kafkaConsumer.getter().KafkaReader.ReadMessage(ctx)
 			if err != nil {
 				logs().Error("kafka cant read message : " + err.Error())
 				if strings.Contains(err.Error(), "network is unreachable") {
+					logs().Error("network is unreachable : " + err.Error())
 					//  TODO
 					_ = kafkaConsumer.consumerReconnection()
 
 				}
-				logs().Error("kafka cant read message : " + err.Error())
-
 				continue
 			}
+			headers := make([]Header, 0, 1)
+			for _, header := range msg.Headers {
+				headers = append(headers, Header{Key: header.Key})
 
-			// TODO
-			// worker pool
-
-			readMessage := ReadMessageDTO{
-				Key:   msg.Key,
-				Value: msg.Value,
 			}
-			writeMessage, err := method(ctx, readMessage)
+			readMessageDTOCh <- ReadMessageDTO{Key: msg.Key, Value: msg.Value, Headers: headers}
 
 		}
-
 	}()
+
+	// TODO
+	// worker pool
+
+	// readMessage := ReadMessageDTO{
+	// 	Key:   msg.Key,
+	// 	Value: msg.Value,
+	// }
+	// writeMessage, err := method(ctx, readMessage)
+
+	for i := 0; i < opt.Worker; i++ {
+		go func(workerID int) {
+
+		}(i + 1)
+
+	}
 
 	select {}
 }
