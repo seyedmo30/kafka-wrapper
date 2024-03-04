@@ -7,23 +7,27 @@ import (
 )
 
 type worker struct {
-	id           int
-	function     FirstClassFunc
-	workQueue    chan ReadMessageDTO
-	resultQueue  chan WriteMessageDTO
-	errorChannel chan error
+	id               int
+	limitRunFunction int
+	function         FirstClassFunc
+	workQueue        chan ReadMessageDTO
+	resultQueue      chan WriteMessageDTO
+	errorChannel     chan error
 }
 
-func newWorker(id int, fn FirstClassFunc, workQueue chan ReadMessageDTO, resultQueue chan WriteMessageDTO, errorChannel chan error) *worker {
+func newWorker(id int, limitRunFunction int, fn FirstClassFunc, workQueue chan ReadMessageDTO, resultQueue chan WriteMessageDTO, errorChannel chan error) *worker {
 	return &worker{
-		id:           id,
-		function:     fn,
-		workQueue:    workQueue,
-		resultQueue:  resultQueue,
-		errorChannel: errorChannel,
+		id:               id,
+		limitRunFunction: limitRunFunction,
+		function:         fn,
+		workQueue:        workQueue,
+		resultQueue:      resultQueue,
+		errorChannel:     errorChannel,
 	}
 }
 func (w *worker) start(ctx context.Context) {
+
+	concurrentRunFunction := make(chan struct{}, w.limitRunFunction)
 	for {
 		select {
 		case <-ctx.Done():
@@ -35,24 +39,26 @@ func (w *worker) start(ctx context.Context) {
 			done := make(chan struct{}, 1)
 			finish := make(chan struct{}, 1)
 
-			go func(t chan struct{}) {
+			go func(t chan struct{}, concurrentRunFunction chan struct{}) {
 
 				select {
 				case <-done:
-					finish <- struct{}{}
+					concurrentRunFunction <- struct{}{}
 
 				case <-time.After(time.Second * 50):
 					w.errorChannel <- errors.New("timeout")
-					finish <- struct{}{}
+
+					concurrentRunFunction <- struct{}{}
+
 				}
 
 				t <- struct{}{}
 
-			}(done)
+			}(done, concurrentRunFunction)
 
 			go w.function(ctx, w.workQueue, w.resultQueue, w.errorChannel, done)
 
-			<-finish
+			<-concurrentRunFunction
 
 			cancel()
 			close(done)
