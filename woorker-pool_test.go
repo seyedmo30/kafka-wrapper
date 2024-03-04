@@ -49,7 +49,6 @@ func TestWorkerStart(t *testing.T) {
 
 func mockFirstClassFunc(ctx context.Context, workQueue chan ReadMessageDTO, resultQueue chan WriteMessageDTO, errorChannel chan error, done chan struct{}) {
 	read := <-workQueue
-	panic("Something went wrong!")
 	if rand.Intn(10) == 5 {
 		panic("Something went wrong!")
 

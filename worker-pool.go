@@ -37,9 +37,6 @@ func (w *worker) start(ctx context.Context) {
 			return
 		default:
 
-			defer func() {
-				recover() // To avoid panicking if sending to a closed channel
-			}()
 			fmt.Println("*** wait for read msg")
 
 			res := <-w.workQueue
@@ -49,8 +46,19 @@ func (w *worker) start(ctx context.Context) {
 			fmt.Println("!!! run func")
 
 			done := make(chan struct{}, 1)
-			
-			go w.function(ctx, w.workQueue, w.resultQueue, w.errorChannel, done)
+
+			go func() {
+				defer func() {
+					if r := recover(); r != nil {
+						// Recover from panic
+						fmt.Println("Panic recovered:", r)
+
+					}
+				}()
+				// Execute the worker function
+				w.function(ctx, w.workQueue, w.resultQueue, w.errorChannel, done)
+				// Close the done channel when the worker function completes
+			}()
 
 			fmt.Println("timeout vs done")
 			select {
@@ -65,6 +73,8 @@ func (w *worker) start(ctx context.Context) {
 
 				w.errorChannel <- errors.New("timeout")
 				<-concurrentRunFunction
+				close(done)
+
 			}
 
 		}
