@@ -2,6 +2,7 @@ package kafkawrapper
 
 import (
 	"context"
+	"fmt"
 	"strings"
 )
 
@@ -9,20 +10,33 @@ func Run(ctx context.Context, kafkaConsumer kafkaConsumer, method FirstClassFunc
 
 	opt := validateOptionalConfiguration(optionalConfiguration...)
 	readMessageDTOCh := make(chan ReadMessageDTO, 50)
+	writeMessageDTOCh := make(chan WriteMessageDTO, 50)
+	errorChannel := make(chan error, 50)
 	err := kafkaConsumer.consumerConnection()
 
 	if err != nil {
 		// TODO
-		logs().Error("kafka cant coonect : " + err.Error())
-
+		logs().Error("kafka cunsumer cant coonect : " + err.Error())
+		panic("please ckeck cunsumer connection ")
 	}
 
+	err = kafkaPubliosher.publisherConnection()
+
+	if err != nil {
+		// TODO
+		logs().Error("kafka publisher cant coonect : " + err.Error())
+		panic("please ckeck publisher connection ")
+	}
+
+	// consumer
 	go func() {
 		defer close(readMessageDTOCh)
 
 		for {
-
+			fmt.Println("start read msg")
 			msg, err := kafkaConsumer.getter().KafkaReader.ReadMessage(ctx)
+			fmt.Println(string(msg.Value))
+
 			if err != nil {
 				logs().Error("kafka cant read message : " + err.Error())
 				if strings.Contains(err.Error(), "network is unreachable") {
@@ -43,19 +57,24 @@ func Run(ctx context.Context, kafkaConsumer kafkaConsumer, method FirstClassFunc
 		}
 	}()
 
-	// TODO
+	// publisher
+	go func() {
+		defer close(writeMessageDTOCh)
+
+		for message := range writeMessageDTOCh {
+			if err := kafkaPubliosher.setter(ctx, message); err != nil {
+				logs().Warn(err.Error())
+
+			}
+		}
+
+	}()
+
 	// worker pool
-
-	// readMessage := ReadMessageDTO{
-	// 	Key:   msg.Key,
-	// 	Value: msg.Value,
-	// }
-	// writeMessage, err := method(ctx, readMessage)
-
 	for i := 0; i < opt.Worker; i++ {
-		go func(workerID int) {
 
-		}(i + 1)
+		w := newWorker(i+1, 10, method, readMessageDTOCh, writeMessageDTOCh, errorChannel)
+		go w.start(ctx)
 
 	}
 

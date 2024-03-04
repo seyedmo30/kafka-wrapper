@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -23,7 +24,7 @@ func TestKafkaConsumerSetup(t *testing.T) {
 func TestConsumerConnection_Success(t *testing.T) {
 	socket := "localhost:9092"
 	topic := "test"
-	groupID := "test_group6"
+	groupID := "test_1"
 
 	consumer := KafkaConsumerSetup(socket, topic, groupID)
 
@@ -32,9 +33,28 @@ func TestConsumerConnection_Success(t *testing.T) {
 	assert.NoError(t, err, "Expected no error during Kafka connection")
 
 	msg, err := consumer.getter().KafkaReader.ReadMessage(context.Background())
+	fmt.Printf("%+v \n", string(msg.Value))
+	fmt.Println("err :", err)
+	// consumer.close()
+	// assert.NoError(t, err, "Expected no error during Kafka connection")
 
-	fmt.Println(msg, err)
+	msg, err = consumer.getter().KafkaReader.ReadMessage(context.Background())
+	fmt.Printf("%+v \n", string(msg.Value))
+	fmt.Println("err :", err)
 
+	msg, err = consumer.getter().KafkaReader.ReadMessage(context.Background())
+	fmt.Printf("%+v \n", string(msg.Value))
+	fmt.Println("err :", err)
+
+	msg, err = consumer.getter().KafkaReader.ReadMessage(context.Background())
+	fmt.Printf("%+v \n", string(msg.Value))
+	fmt.Println("err :", err)
+
+	msg, err = consumer.getter().KafkaReader.ReadMessage(context.Background())
+	fmt.Printf("%+v \n", string(msg.Value))
+	fmt.Println("err :", err)
+
+	
 }
 
 func TestConsumerConnection_Failure(t *testing.T) {
@@ -50,7 +70,7 @@ func TestConsumerConnection_Failure(t *testing.T) {
 
 }
 
-func TestPublisherConnection_Failure(t *testing.T) {
+func TestPublisherConnection_Success(t *testing.T) {
 	socket := "localhost:9092"
 	topic := "test"
 	publisher := KafkaPublisherSetup(socket, topic)
@@ -58,5 +78,51 @@ func TestPublisherConnection_Failure(t *testing.T) {
 	err := publisher.publisherConnection()
 
 	assert.NoError(t, err, "Expected no error during Kafka connection")
+
+	publisher.close()
+
+	err = publisher.setter(context.Background(), WriteMessageDTO{
+		Key:   []byte("1"),
+		Value: []byte("Hello, Kafka!"),
+	})
+	fmt.Println("err", err)
+
+	err = publisher.publisherConnection()
+	fmt.Println("err", err)
+
+	err = publisher.publisherConnection()
+
+	fmt.Println("err", err)
+	err = publisher.publisherConnection()
+	fmt.Println("err", err)
+	err = publisher.publisherConnection()
+	fmt.Println("err", err)
+	err = publisher.publisherConnection()
+	fmt.Println("err", err)
+	err = publisher.publisherConnection()
+	fmt.Println("err", err)
+	err = publisher.publisherConnection()
+
+	go publisher.setter(context.Background(), WriteMessageDTO{
+		Key:   []byte("2"),
+		Value: []byte("Hello, Kafka!"),
+	})
+	go publisher.setter(context.Background(), WriteMessageDTO{
+		Key:   []byte("3"),
+		Value: []byte("Hello, Kafka!"),
+	})
+	go publisher.setter(context.Background(), WriteMessageDTO{
+		Key:   []byte("4"),
+		Value: []byte("Hello, Kafka!"),
+	})
+	go publisher.setter(context.Background(), WriteMessageDTO{
+		Key:   []byte("5"),
+		Value: []byte("Hello, Kafka!"),
+	})
+	go publisher.setter(context.Background(), WriteMessageDTO{
+		Key:   []byte("6"),
+		Value: []byte("Hello, Kafka!"),
+	})
+	time.Sleep(time.Second * 5)
 
 }

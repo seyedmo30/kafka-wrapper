@@ -53,6 +53,12 @@ func (k kafkaPublisher) getter() kafkaWriter {
 	return kafkaPublisherinstance
 }
 
+func (k *kafkaConsumer) close() error {
+
+	k.getter().KafkaReader.Close()
+	return nil
+
+}
 func (k *kafkaPublisher) close() error {
 
 	defer k.getter().KafkaWriter.Close()
@@ -91,9 +97,12 @@ func (k *kafkaPublisher) close() error {
 	return nil
 }
 
-func (k kafkaPublisher) setter(ctx context.Context, value []byte, key []byte, header []map[string][]byte) error {
+func (k kafkaPublisher) setter(ctx context.Context, msg WriteMessageDTO) error {
 
-	return nil
+	return kafkaPublisherinstance.KafkaWriter.WriteMessages(ctx, kafkaPachage.Message{
+		Key:   msg.Key,
+		Value: msg.Value,
+	})
 }
 
 func (k kafkaPublisher) publisherConnection() error {
