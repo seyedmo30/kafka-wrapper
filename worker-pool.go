@@ -3,6 +3,7 @@ package kafkawrapper
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 )
 
@@ -25,44 +26,46 @@ func newWorker(id int, limitRunFunction int, fn FirstClassFunc, workQueue chan R
 		errorChannel:     errorChannel,
 	}
 }
-func (w *worker) start(ctx context.Context) {
 
+func (w *worker) start(ctx context.Context) {
 	concurrentRunFunction := make(chan struct{}, w.limitRunFunction)
+	defer close(concurrentRunFunction)
+
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		default:
 
-			ctx, cancel := context.WithTimeout(ctx, 50*time.Second) // Set your desired timeout duration
-			defer cancel()
+			defer func() {
+				recover() // To avoid panicking if sending to a closed channel
+			}()
+			fmt.Println("*** wait for read msg")
+
+			res := <-w.workQueue
+			w.workQueue <- res
+
+			concurrentRunFunction <- struct{}{}
+			fmt.Println("!!! run func")
+
 			done := make(chan struct{}, 1)
-			finish := make(chan struct{}, 1)
-
-			go func(t chan struct{}, concurrentRunFunction chan struct{}) {
-
-				select {
-				case <-done:
-					concurrentRunFunction <- struct{}{}
-
-				case <-time.After(time.Second * 50):
-					w.errorChannel <- errors.New("timeout")
-
-					concurrentRunFunction <- struct{}{}
-
-				}
-
-				t <- struct{}{}
-
-			}(done, concurrentRunFunction)
-
+			
 			go w.function(ctx, w.workQueue, w.resultQueue, w.errorChannel, done)
 
-			<-concurrentRunFunction
+			fmt.Println("timeout vs done")
+			select {
 
-			cancel()
-			close(done)
-			close(finish)
+			case <-done:
+				fmt.Println("done")
+				<-concurrentRunFunction
+				close(done)
+
+			case <-time.After(5 * time.Second):
+				fmt.Println("timeout")
+
+				w.errorChannel <- errors.New("timeout")
+				<-concurrentRunFunction
+			}
 
 		}
 	}
