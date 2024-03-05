@@ -51,8 +51,6 @@ func Run(ctx context.Context, kafkaConsumer kafkaConsumer, method FirstClassFunc
 						//  TODO
 						errCh <- err
 
-						_ = kafkaConsumer.consumerReconnection()
-
 					}
 					continue
 				}

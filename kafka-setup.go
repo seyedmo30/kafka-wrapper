@@ -5,14 +5,15 @@ import (
 	"time"
 
 	kafkaPachage "github.com/segmentio/kafka-go"
+	"github.com/segmentio/kafka-go/protocol"
 )
 
 // kafkaConsumer represents a Kafka consumer.
 type kafkaConsumer struct {
-	socket                string                   // Kafka broker address
-	topic                 string                   // Topic to consume messages from
-	groupID               string                   // Consumer group ID
-	kafkaConsumerinstance kafkaPachage.Reader     // Kafka reader instance
+	socket                string              // Kafka broker address
+	topic                 string              // Topic to consume messages from
+	groupID               string              // Consumer group ID
+	kafkaConsumerinstance kafkaPachage.Reader // Kafka reader instance
 }
 
 // KafkaConsumerSetup initializes and returns a new KafkaConsumer instance.
@@ -22,9 +23,9 @@ func KafkaConsumerSetup(Socket string, Topic string, GroupID string) kafkaConsum
 
 // kafkaPublisher represents a Kafka publisher.
 type kafkaPublisher struct {
-	socket                 string                   // Kafka broker address
-	topic                  string                   // Topic to publish messages to
-	kafkaPublisherinstance kafkaPachage.Writer     // Kafka writer instance
+	socket                 string              // Kafka broker address
+	topic                  string              // Topic to publish messages to
+	kafkaPublisherinstance kafkaPachage.Writer // Kafka writer instance
 }
 
 // KafkaPublisherSetup initializes and returns a new KafkaPublisher instance.
@@ -35,7 +36,13 @@ func KafkaPublisherSetup(Socket string, Topic string) kafkaPublisher {
 // getter reads a message from Kafka.
 func (k *kafkaConsumer) getter(ctx context.Context) (ReadMessageDTO, error) {
 	msg, err := k.kafkaConsumerinstance.ReadMessage(ctx)
-	return ReadMessageDTO{Key: msg.Key, Value: msg.Value}, err
+	headers := make([]Header, 0, 1)
+	for _, header := range msg.Headers {
+		headers = append(headers, Header{Key: header.Key, Value: header.Value})
+
+	}
+
+	return ReadMessageDTO{Key: msg.Key, Value: msg.Value, Headers: headers}, err
 }
 
 // close closes the KafkaConsumer instance.
@@ -52,9 +59,16 @@ func (k *kafkaPublisher) close() error {
 
 // setter writes a message to Kafka.
 func (k *kafkaPublisher) setter(ctx context.Context, msg WriteMessageDTO) error {
+
+	headers := make([]protocol.Header, len(msg.Headers))
+	for _, v := range msg.Headers {
+		headers = append(headers, protocol.Header{Key: v.Key, Value: v.Value})
+	}
+
 	return k.kafkaPublisherinstance.WriteMessages(ctx, kafkaPachage.Message{
-		Key:   msg.Key,
-		Value: msg.Value,
+		Key:     msg.Key,
+		Value:   msg.Value,
+		Headers: headers,
 	})
 }
 
