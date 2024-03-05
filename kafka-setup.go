@@ -9,9 +9,10 @@ import (
 )
 
 type kafkaConsumer struct {
-	socket  string
-	topic   string
-	groupID string
+	socket                string
+	topic                 string
+	groupID               string
+	kafkaConsumerinstance kafkaReader
 }
 
 func KafkaConsumerSetup(Socket string, Topic string, GroupID string) kafkaConsumer {
@@ -21,8 +22,9 @@ func KafkaConsumerSetup(Socket string, Topic string, GroupID string) kafkaConsum
 }
 
 type kafkaPublisher struct {
-	socket string
-	topic  string
+	socket                 string
+	topic                  string
+	kafkaPublisherinstance kafkaWriter
 }
 
 func KafkaPublisherSetup(Socket string, Topic string) kafkaPublisher {
@@ -35,22 +37,18 @@ type kafkaReader struct {
 	KafkaReader *kafkaPachage.Reader
 }
 
-var kafkaConsumerinstance kafkaReader
-
 type kafkaWriter struct {
 	KafkaWriter *kafkaPachage.Writer
 }
 
-var kafkaPublisherinstance kafkaWriter
-
 func (k *kafkaConsumer) getter() kafkaReader {
 
-	return kafkaConsumerinstance
+	return k.kafkaConsumerinstance
 }
 
-func (k kafkaPublisher) getter() kafkaWriter {
+func (k *kafkaPublisher) getter() kafkaWriter {
 
-	return kafkaPublisherinstance
+	return k.kafkaPublisherinstance
 }
 
 func (k *kafkaConsumer) close() error {
@@ -97,15 +95,15 @@ func (k *kafkaPublisher) close() error {
 	return nil
 }
 
-func (k kafkaPublisher) setter(ctx context.Context, msg WriteMessageDTO) error {
+func (k *kafkaPublisher) setter(ctx context.Context, msg WriteMessageDTO) error {
 
-	return kafkaPublisherinstance.KafkaWriter.WriteMessages(ctx, kafkaPachage.Message{
+	return k.kafkaPublisherinstance.KafkaWriter.WriteMessages(ctx, kafkaPachage.Message{
 		Key:   msg.Key,
 		Value: msg.Value,
 	})
 }
 
-func (k kafkaPublisher) publisherConnection() error {
+func (k *kafkaPublisher) publisherConnection() error {
 
 	dialer := &kafkaPachage.Dialer{
 		Timeout:   10 * time.Second,
@@ -126,7 +124,7 @@ func (k kafkaPublisher) publisherConnection() error {
 		Topic: k.topic,
 	})
 
-	kafkaPublisherinstance.KafkaWriter = conn
+	k.kafkaPublisherinstance.KafkaWriter = conn
 
 	return nil
 }
@@ -154,7 +152,7 @@ func (k *kafkaConsumer) consumerConnection() error {
 		MaxBytes: 10e6, // 10MB
 	})
 
-	kafkaConsumerinstance.KafkaReader = conn
+	k.kafkaConsumerinstance.KafkaReader = conn
 
 	return nil
 }
