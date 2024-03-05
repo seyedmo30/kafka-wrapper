@@ -12,7 +12,7 @@ type kafkaConsumer struct {
 	socket                string
 	topic                 string
 	groupID               string
-	kafkaConsumerinstance kafkaReader
+	kafkaConsumerinstance kafkaPachage.Reader
 }
 
 func KafkaConsumerSetup(Socket string, Topic string, GroupID string) kafkaConsumer {
@@ -24,7 +24,7 @@ func KafkaConsumerSetup(Socket string, Topic string, GroupID string) kafkaConsum
 type kafkaPublisher struct {
 	socket                 string
 	topic                  string
-	kafkaPublisherinstance kafkaWriter
+	kafkaPublisherinstance kafkaPachage.Writer
 }
 
 func KafkaPublisherSetup(Socket string, Topic string) kafkaPublisher {
@@ -33,71 +33,28 @@ func KafkaPublisherSetup(Socket string, Topic string) kafkaPublisher {
 
 }
 
-type kafkaReader struct {
-	KafkaReader *kafkaPachage.Reader
-}
+func (k *kafkaConsumer) getter(ctx context.Context) (ReadMessageDTO, error) {
+	msg, err := k.kafkaConsumerinstance.ReadMessage(ctx)
 
-type kafkaWriter struct {
-	KafkaWriter *kafkaPachage.Writer
-}
-
-func (k *kafkaConsumer) getter() kafkaReader {
-
-	return k.kafkaConsumerinstance
-}
-
-func (k *kafkaPublisher) getter() kafkaWriter {
-
-	return k.kafkaPublisherinstance
+	return ReadMessageDTO{Key: msg.Key, Value: msg.Value}, err
 }
 
 func (k *kafkaConsumer) close() error {
 
-	k.getter().KafkaReader.Close()
+	k.kafkaConsumerinstance.Close()
 	return nil
 
 }
 func (k *kafkaPublisher) close() error {
 
-	defer k.getter().KafkaWriter.Close()
-	// kafkaPachage.ACL
-	// kafkaPachage.Client
-
-	// // Set up Kafka client configuration
-	// config := kafka.WriterConfig{
-	// 	Brokers: []string{"localhost:9092"}, // Kafka broker address
-	// }
-
-	// // Create a new Kafka client
-	// client := kafka.NewWriter(config)
-
-	// // Create a new Admin client
-	// adminClient := kafka.NewAdminClient(&kafka.Dialer{
-	// 	Timeout: 10, // Timeout in seconds
-	// })
-
-	// // Specify the topic to delete
-	// topicToDelete := "topic_name"
-
-	// // Delete the specified topic
-	// err := adminClient.DeleteTopics(topicToDelete)
-	// if err != nil {
-	// 	fmt.Fprintf(os.Stderr, "Error deleting topic: %v\n", err)
-	// 	os.Exit(1)
-	// }
-
-	// fmt.Printf("Topic '%s' deleted successfully.\n", topicToDelete)
-
-	// // Close the Kafka and Admin clients
-	// adminClient.Close()
-	// client.Close()
+	k.kafkaPublisherinstance.Close()
 
 	return nil
 }
 
 func (k *kafkaPublisher) setter(ctx context.Context, msg WriteMessageDTO) error {
 
-	return k.kafkaPublisherinstance.KafkaWriter.WriteMessages(ctx, kafkaPachage.Message{
+	return k.kafkaPublisherinstance.WriteMessages(ctx, kafkaPachage.Message{
 		Key:   msg.Key,
 		Value: msg.Value,
 	})
@@ -124,7 +81,7 @@ func (k *kafkaPublisher) publisherConnection() error {
 		Topic: k.topic,
 	})
 
-	k.kafkaPublisherinstance.KafkaWriter = conn
+	k.kafkaPublisherinstance = *conn
 
 	return nil
 }
@@ -152,7 +109,7 @@ func (k *kafkaConsumer) consumerConnection() error {
 		MaxBytes: 10e6, // 10MB
 	})
 
-	k.kafkaConsumerinstance.KafkaReader = conn
+	k.kafkaConsumerinstance = *conn
 
 	return nil
 }

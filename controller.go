@@ -11,9 +11,9 @@ func Run(ctx context.Context, kafkaConsumer kafkaConsumer, method FirstClassFunc
 	go func() {
 
 		opt := validateOptionalConfiguration(optionalConfiguration...)
-		readMessageDTOCh := make(chan ReadMessageDTO, 50)
-		writeMessageDTOCh := make(chan WriteMessageDTO, 50)
-		errorChannel := make(chan error, 50)
+		readMessageDTOCh := make(chan ReadMessageDTO, 3)
+		writeMessageDTOCh := make(chan WriteMessageDTO, 3)
+		errorChannel := make(chan error, 3)
 		err := kafkaConsumer.consumerConnection()
 
 		if err != nil {
@@ -39,7 +39,7 @@ func Run(ctx context.Context, kafkaConsumer kafkaConsumer, method FirstClassFunc
 
 			for {
 				fmt.Println("start read msg")
-				msg, err := kafkaConsumer.getter().KafkaReader.ReadMessage(ctx)
+				msg, err := kafkaConsumer.getter(ctx)
 				fmt.Println(string(msg.Value))
 
 				if err != nil {

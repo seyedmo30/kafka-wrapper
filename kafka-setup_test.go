@@ -32,25 +32,25 @@ func TestConsumerConnection_Success(t *testing.T) {
 
 	assert.NoError(t, err, "Expected no error during Kafka connection")
 
-	msg, err := consumer.getter().KafkaReader.ReadMessage(context.Background())
+	msg, err := consumer.getter(context.Background())
 	fmt.Printf("%+v \n", string(msg.Value))
 	fmt.Println("err :", err)
 	// consumer.close()
 	// assert.NoError(t, err, "Expected no error during Kafka connection")
 
-	msg, err = consumer.getter().KafkaReader.ReadMessage(context.Background())
+	msg, err = consumer.getter(context.Background())
 	fmt.Printf("%+v \n", string(msg.Value))
 	fmt.Println("err :", err)
 
-	msg, err = consumer.getter().KafkaReader.ReadMessage(context.Background())
+	msg, err = consumer.getter(context.Background())
 	fmt.Printf("%+v \n", string(msg.Value))
 	fmt.Println("err :", err)
 
-	msg, err = consumer.getter().KafkaReader.ReadMessage(context.Background())
+	msg, err = consumer.getter(context.Background())
 	fmt.Printf("%+v \n", string(msg.Value))
 	fmt.Println("err :", err)
 
-	msg, err = consumer.getter().KafkaReader.ReadMessage(context.Background())
+	msg, err = consumer.getter(context.Background())
 	fmt.Printf("%+v \n", string(msg.Value))
 	fmt.Println("err :", err)
 
