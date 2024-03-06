@@ -70,60 +70,23 @@ func TestConsumerConnection_Failure(t *testing.T) {
 }
 
 func TestPublisherConnection_Success(t *testing.T) {
-	socket := "localhost:9092"
-	topic := "test"
+	socket := "10.21.15.99:21692"
+	topic := "_test1"
 	publisher := KafkaPublisherSetup(socket, topic)
 
 	err := publisher.publisherConnection()
 
 	assert.NoError(t, err, "Expected no error during Kafka connection")
 
-	publisher.close()
+	for i := 0; i < 10; i++ {
 
-	err = publisher.setter(context.Background(), WriteMessageDTO{
-		Key:   []byte("1"),
-		Value: []byte("Hello, Kafka!"),
-	})
-	fmt.Println("err", err)
-
-	err = publisher.publisherConnection()
-	fmt.Println("err", err)
-
-	err = publisher.publisherConnection()
-
-	fmt.Println("err", err)
-	err = publisher.publisherConnection()
-	fmt.Println("err", err)
-	err = publisher.publisherConnection()
-	fmt.Println("err", err)
-	err = publisher.publisherConnection()
-	fmt.Println("err", err)
-	err = publisher.publisherConnection()
-	fmt.Println("err", err)
-	err = publisher.publisherConnection()
-
-	go publisher.setter(context.Background(), WriteMessageDTO{
-		Key:   []byte("2"),
-		Value: []byte("Hello, Kafka!"),
-	})
-	go publisher.setter(context.Background(), WriteMessageDTO{
-		Key:   []byte("3"),
-		Value: []byte("Hello, Kafka!"),
-	})
-	go publisher.setter(context.Background(), WriteMessageDTO{
-		Key:   []byte("4"),
-		Value: []byte("Hello, Kafka!"),
-	})
-	go publisher.setter(context.Background(), WriteMessageDTO{
-		Key:   []byte("5"),
-		Value: []byte("Hello, Kafka!"),
-	})
-	go publisher.setter(context.Background(), WriteMessageDTO{
-		Key:   []byte("6"),
-		Value: []byte("Hello, Kafka!"),
-	})
-	time.Sleep(time.Second * 5)
-
+		err = publisher.setter(context.Background(), WriteMessageDTO{
+			Key:   []byte(generateRandomString(3)),
+			Value: []byte(generateRandomString(3)),
+		})
+		fmt.Println(err)
+		time.Sleep(1 * time.Second)
+	}
 }
 
 func TestKafkaIntegration(t *testing.T) {

@@ -3,75 +3,75 @@ package kafkawrapper
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 )
 
 type worker struct {
-	id               int
-	limitRunFunction int
-	function         FirstClassFunc
-	workQueue        chan ReadMessageDTO
-	resultQueue      chan WriteMessageDTO
-	errorChannel     chan error
+	id                    int
+	optionalConfiguration OptionalConfiguration
+	function              FirstClassFunc
+	workQueue             chan ReadMessageDTO
+	resultQueue           chan WriteMessageDTO
+	errorChannel          chan error
 }
 
-func newWorker(id int, limitRunFunction int, fn FirstClassFunc, workQueue chan ReadMessageDTO, resultQueue chan WriteMessageDTO, errorChannel chan error) *worker {
+func newWorker(id int, limitRunFunction int, fn FirstClassFunc, workQueue chan ReadMessageDTO, resultQueue chan WriteMessageDTO, errorChannel chan error, optionalConfiguration OptionalConfiguration) *worker {
 	return &worker{
-		id:               id,
-		limitRunFunction: limitRunFunction,
-		function:         fn,
-		workQueue:        workQueue,
-		resultQueue:      resultQueue,
-		errorChannel:     errorChannel,
+		id:                    id,
+		optionalConfiguration: optionalConfiguration,
+		function:              fn,
+		workQueue:             workQueue,
+		resultQueue:           resultQueue,
+		errorChannel:          errorChannel,
 	}
 }
 
 func (w *worker) start(ctx context.Context) {
-	concurrentRunFunction := make(chan struct{}, w.limitRunFunction)
+	concurrentRunFunction := make(chan struct{}, w.optionalConfiguration.NumberFuncInWorker)
 	defer close(concurrentRunFunction)
 
 	for {
 		select {
 		case <-ctx.Done():
+			logger.Warn("context done")
 			return
 		default:
 
-			fmt.Println("*** wait for read msg")
-
+			logger.Debug("wait for receive message from WriteMessageDTO channel")
 			res := <-w.workQueue
 			w.workQueue <- res
+			logger.Debug("receive message from WriteMessageDTO channel")
 
 			concurrentRunFunction <- struct{}{}
-			fmt.Println("!!! run func")
+			logger.Debug("get signal for start run func")
 
 			done := make(chan struct{}, 1)
 
 			go func() {
 				defer func() {
 					if r := recover(); r != nil {
-						// Recover from panic
-						fmt.Println("Panic recovered:", r)
-
+						logger.Warn("Panic recovered", "external_error", r)
 					}
 				}()
 				// Execute the worker function
+				logger.Debug("start firstfunc ")
+
 				w.function(ctx, w.workQueue, w.resultQueue, w.errorChannel, done)
 				// Close the done channel when the worker function completes
 			}()
 
-			fmt.Println("timeout vs done")
 			select {
 
 			case <-done:
-				fmt.Println("done")
+				logger.Debug("send firstfunc complete signal ")
+
 				<-concurrentRunFunction
 				close(done)
 
-			case <-time.After(5 * time.Second):
-				fmt.Println("timeout")
+			case <-time.After(time.Duration(w.optionalConfiguration.Timeout) * time.Second):
+				logger.Debug("timeout firstfunc")
 
-				w.errorChannel <- errors.New("timeout")
+				w.errorChannel <- errors.New("timeout firstfunc")
 				<-concurrentRunFunction
 				close(done)
 

@@ -8,10 +8,10 @@ import (
 
 func mockFirstClassFunc(ctx context.Context, workQueue chan ReadMessageDTO, resultQueue chan WriteMessageDTO, errorChannel chan error, done chan struct{}) {
 	read := <-workQueue
-	if rand.Intn(10) == 5 {
-		panic("Something went wrong!")
+	// if rand.Intn(10) == 5 {
+	// 	panic("Something went wrong!")
 
-	}
+	// }
 	// Mock implementation for writing to resultQueue
 	res := generateWriteMessage(string(read.Value))
 	resultQueue <- res
@@ -21,7 +21,7 @@ func mockFirstClassFunc(ctx context.Context, workQueue chan ReadMessageDTO, resu
 }
 
 func generateWriteMessage(pre string) WriteMessageDTO {
-	time.Sleep(time.Second * time.Duration(rand.Intn(10)+1))
+	time.Sleep(time.Second * time.Duration(rand.Intn(2)+1))
 
 	return WriteMessageDTO{
 
@@ -30,7 +30,7 @@ func generateWriteMessage(pre string) WriteMessageDTO {
 }
 
 func generateMockReadMessage() ReadMessageDTO {
-	time.Sleep(time.Second * time.Duration(rand.Intn(10)+1))
+	time.Sleep(time.Second * time.Duration(rand.Intn(2)+1))
 
 	return ReadMessageDTO{
 

@@ -20,9 +20,10 @@ type WriteMessageDTO struct {
 }
 
 type OptionalConfiguration struct {
-	Worker  int
-	Retry   int
-	Timeout int
+	Worker             int
+	Retry              int
+	Timeout            int
+	NumberFuncInWorker int
 }
 
-type FirstClassFunc func(ctx context.Context, readMessageCh chan ReadMessageDTO, writeMessageCh chan WriteMessageDTO, errCh chan error,done chan struct{})
+type FirstClassFunc func(ctx context.Context, readMessageCh chan ReadMessageDTO, writeMessageCh chan WriteMessageDTO, errCh chan error, done chan struct{})

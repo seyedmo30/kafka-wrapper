@@ -6,9 +6,10 @@ package kafkawrapper
 func validateOptionalConfiguration(optionalConfiguration ...OptionalConfiguration) OptionalConfiguration {
 	// Default configurations
 	opt := OptionalConfiguration{
-		Worker:  1,
-		Retry:   1,
-		Timeout: 30,
+		Worker:             1,
+		Retry:              1,
+		Timeout:            30,
+		NumberFuncInWorker: 10,
 	}
 
 	// If no optional configurations provided, return default configurations
@@ -32,6 +33,11 @@ func validateOptionalConfiguration(optionalConfiguration ...OptionalConfiguratio
 	// Validate and set Worker value
 	if config.Worker > 1 {
 		opt.Worker = config.Worker
+	}
+
+	// Validate and set NumberFuncInWorker value
+	if config.NumberFuncInWorker > 1 {
+		opt.NumberFuncInWorker = config.NumberFuncInWorker
 	}
 
 	return opt

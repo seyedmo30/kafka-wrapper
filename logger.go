@@ -4,10 +4,24 @@ import (
 	"os"
 	"sync"
 
-	"go.uber.org/zap/zapcore"
+	"log/slog"
 
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
+
+var logger *slog.Logger
+
+func init() {
+
+	h := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		AddSource: true,
+		Level:     slog.LevelDebug,
+	})
+
+	logger = slog.New(h)
+
+}
 
 var logsOnce sync.Once
 

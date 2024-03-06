@@ -2,6 +2,8 @@ package kafkawrapper
 
 import (
 	"context"
+	"fmt"
+	"log/slog"
 	"time"
 
 	kafkaPachage "github.com/segmentio/kafka-go"
@@ -36,6 +38,13 @@ func KafkaPublisherSetup(Socket string, Topic string) kafkaPublisher {
 // getter reads a message from Kafka.
 func (k *kafkaConsumer) getter(ctx context.Context) (ReadMessageDTO, error) {
 	msg, err := k.kafkaConsumerinstance.ReadMessage(ctx)
+	if err == nil {
+		err = k.kafkaConsumerinstance.CommitMessages(ctx, msg)
+		if err != nil {
+			fmt.Println("================", err)
+		}
+
+	}
 	headers := make([]Header, 0, 1)
 	for _, header := range msg.Headers {
 		headers = append(headers, Header{Key: header.Key, Value: header.Value})
@@ -47,14 +56,14 @@ func (k *kafkaConsumer) getter(ctx context.Context) (ReadMessageDTO, error) {
 
 // close closes the KafkaConsumer instance.
 func (k *kafkaConsumer) close() error {
-	k.kafkaConsumerinstance.Close()
-	return nil
+	slog.Info("before close Consumer connection")
+	return k.kafkaConsumerinstance.Close()
 }
 
 // close closes the KafkaPublisher instance.
 func (k *kafkaPublisher) close() error {
-	k.kafkaPublisherinstance.Close()
-	return nil
+	slog.Info("before close Publisher connection")
+	return k.kafkaPublisherinstance.Close()
 }
 
 // setter writes a message to Kafka.
@@ -64,6 +73,7 @@ func (k *kafkaPublisher) setter(ctx context.Context, msg WriteMessageDTO) error 
 	for _, v := range msg.Headers {
 		headers = append(headers, protocol.Header{Key: v.Key, Value: v.Value})
 	}
+	slog.Debug("before WriteMessages", "Key : ", msg.Value)
 
 	return k.kafkaPublisherinstance.WriteMessages(ctx, kafkaPachage.Message{
 		Key:     msg.Key,
@@ -82,7 +92,7 @@ func (k *kafkaPublisher) publisherConnection() error {
 	// Attempt to dial the Kafka broker
 	connDail, err := dialer.Dial("tcp", k.socket)
 	if err != nil {
-		logs().Error("Failed to connect to Kafka: \n" + err.Error())
+		logger.Error("Failed to connect to publisher Kafka  ", "external_error", err.Error())
 		return err
 	}
 
@@ -111,7 +121,8 @@ func (k *kafkaConsumer) consumerConnection() error {
 	// Attempt to dial the Kafka broker
 	connDail, err := dialer.Dial("tcp", k.socket)
 	if err != nil {
-		logs().Error("Failed to connect to Kafka: \n" + err.Error())
+		logger.Error("Failed to connect to consumer Kafka  ", "external_error", err.Error())
+
 		return err
 	}
 

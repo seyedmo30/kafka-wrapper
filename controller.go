@@ -2,54 +2,75 @@ package kafkawrapper
 
 import (
 	"context"
-	"fmt"
 	"strings"
+	"time"
 )
 
 func Run(ctx context.Context, kafkaConsumer kafkaConsumer, method FirstClassFunc, kafkaPubliosher kafkaPublisher, optionalConfiguration ...OptionalConfiguration) chan error {
+	opt := validateOptionalConfiguration(optionalConfiguration...)
 	errCh := make(chan error, 3)
 	go func() {
-
-		opt := validateOptionalConfiguration(optionalConfiguration...)
+		var err error
 		readMessageDTOCh := make(chan ReadMessageDTO, 3)
 		writeMessageDTOCh := make(chan WriteMessageDTO, 3)
 		errorChannel := make(chan error, 3)
-		err := kafkaConsumer.consumerConnection()
+		for {
 
-		if err != nil {
-			// TODO
-			logs().Error("kafka cunsumer cant coonect : " + err.Error())
-			errCh <- err
+			err = kafkaConsumer.consumerConnection()
+
+			if err != nil {
+				// TODO
+				logger.Error("kafka Consumer cant connect", "external_error", err.Error())
+
+				errCh <- err
+				time.Sleep(5 * time.Second)
+			} else {
+				break
+			}
 		}
-		logs().Info("kafkaConsumer success : " + kafkaConsumer.topic)
+		logger.Info("kafkaConsumer success : " + kafkaConsumer.topic)
 
-		err = kafkaPubliosher.publisherConnection()
+		for {
 
-		if err != nil {
-			// TODO
-			logs().Error("kafka publisher cant coonect : " + err.Error())
-			errCh <- err
+			err = kafkaPubliosher.publisherConnection()
 
+			if err != nil {
+				// TODO
+				logger.Error("kafka publisher cant connect", "external_error", err.Error())
+
+				errCh <- err
+				time.Sleep(5 * time.Second)
+			} else {
+				break
+			}
 		}
 
-		logs().Info("kafkaPubliosher success : " + kafkaPubliosher.topic)
+		logger.Info("kafkaPubliosher success : " + kafkaPubliosher.topic)
 		// consumer
 		go func() {
 			defer close(readMessageDTOCh)
 
 			for {
-				fmt.Println("start read msg")
+				logger.Debug("start read msg", "topic", kafkaConsumer.topic)
+
 				msg, err := kafkaConsumer.getter(ctx)
-				fmt.Println(string(msg.Value))
 
 				if err != nil {
-					logs().Error("kafka cant read message : " + err.Error())
+					logger.Error("kafka cant read message ", "external_error", err.Error(), "topic", kafkaConsumer.topic)
 					errCh <- err
 
-					if strings.Contains(err.Error(), "network is unreachable") {
-						logs().Error("network is unreachable : " + err.Error())
-						//  TODO
-						errCh <- err
+					if strings.Contains(err.Error(), "connection refused") {
+						for {
+
+							errCh <- err
+
+							time.Sleep(5 * time.Second)
+
+							if err = kafkaConsumer.consumerConnection(); err == nil {
+								break
+							}
+							logger.Error("kafka Consumer cant connect", "external_error", err.Error())
+						}
 
 					}
 					continue
@@ -70,9 +91,23 @@ func Run(ctx context.Context, kafkaConsumer kafkaConsumer, method FirstClassFunc
 
 			for message := range writeMessageDTOCh {
 				if err := kafkaPubliosher.setter(ctx, message); err != nil {
-					logs().Warn(err.Error())
+					logger.Error("kafka Consumer cant connect", "external_error", err.Error())
 					errCh <- err
 
+					if strings.Contains(err.Error(), "connection refused") {
+						for {
+
+							errCh <- err
+
+							time.Sleep(5 * time.Second)
+
+							if err = kafkaPubliosher.publisherConnection(); err == nil {
+								break
+							}
+							logger.Error("kafka Consumer cant connect", "external_error", err.Error())
+						}
+
+					}
 				}
 			}
 
@@ -81,7 +116,7 @@ func Run(ctx context.Context, kafkaConsumer kafkaConsumer, method FirstClassFunc
 		// worker pool
 		for i := 0; i < opt.Worker; i++ {
 
-			w := newWorker(i+1, 10, method, readMessageDTOCh, writeMessageDTOCh, errorChannel)
+			w := newWorker(i+1, 10, method, readMessageDTOCh, writeMessageDTOCh, errorChannel, opt)
 			go w.start(ctx)
 
 		}
