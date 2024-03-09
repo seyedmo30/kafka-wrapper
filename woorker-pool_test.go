@@ -23,7 +23,8 @@ func TestWorkerStart(t *testing.T) {
 	}()
 
 	// Create a new worker
-	w := newWorker(1, "test_topic",2, mockFirstClassFunc, workQueue, resultQueue, errorChannel, OptionalConfiguration{Worker: 1, Retry: 1, Timeout: 5, NumberFuncInWorker: 10})
+	w := newWorker(1, "test_topic",
+	 mockFirstClassFunc, workQueue, resultQueue, errorChannel, OptionalConfiguration{Worker: 1, Retry: 1, Timeout: 5, NumberFuncInWorker: 10})
 
 	// Start the worker
 	go w.start(context.Background())

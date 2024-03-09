@@ -16,7 +16,7 @@ type worker struct {
 	errorChannel          chan error
 }
 
-func newWorker(id int, nameWorker string, limitRunFunction int, fn FirstClassFunc, workQueue chan ReadMessageDTO, resultQueue chan WriteMessageDTO, errorChannel chan error, optionalConfiguration OptionalConfiguration) *worker {
+func newWorker(id int, nameWorker string, fn FirstClassFunc, workQueue chan ReadMessageDTO, resultQueue chan WriteMessageDTO, errorChannel chan error, optionalConfiguration OptionalConfiguration) *worker {
 	return &worker{
 		id:                    id,
 		optionalConfiguration: optionalConfiguration,
