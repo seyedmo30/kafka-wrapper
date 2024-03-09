@@ -7,7 +7,7 @@ import (
 )
 
 type worker struct {
-	id                    int
+	id                    uint8
 	name                  string
 	optionalConfiguration OptionalConfiguration
 	function              FirstClassFunc
@@ -16,9 +16,10 @@ type worker struct {
 	errorChannel          chan error
 }
 
-func newWorker(id int, nameWorker string, fn FirstClassFunc, workQueue chan ReadMessageDTO, resultQueue chan WriteMessageDTO, errorChannel chan error, optionalConfiguration OptionalConfiguration) *worker {
+func newWorker(id uint8, nameWorker string, fn FirstClassFunc, workQueue chan ReadMessageDTO, resultQueue chan WriteMessageDTO, errorChannel chan error, optionalConfiguration OptionalConfiguration) *worker {
 	return &worker{
 		id:                    id,
+		name:                  nameWorker,
 		optionalConfiguration: optionalConfiguration,
 		function:              fn,
 		workQueue:             workQueue,
@@ -49,7 +50,7 @@ func (w *worker) start(ctx context.Context) {
 			concurrentRunFunction <- struct{}{}
 			logger.Debug("get signal for start run func", "name_worker", w.name)
 
-			done := make(chan struct{}, 1)
+			response := make(chan ResponseDTO)
 
 			go func() {
 				defer func() {
@@ -60,26 +61,36 @@ func (w *worker) start(ctx context.Context) {
 				// Execute the worker function
 				logger.Debug("start firstfunc ", "name_worker", w.name)
 
-				w.function(ctx, w.workQueue, w.resultQueue, w.errorChannel, done)
+				w.function(ctx, w.workQueue, w.resultQueue, w.errorChannel, response)
 				// Close the done channel when the worker function completes
 			}()
 
 			select {
 
-			case <-done:
-				logger.Debug("send firstfunc complete signal ", "name_worker", w.name)
+			case res := <-response:
+				logger.Debug("send firstfunc signal ", "name_worker", w.name)
 
+				if !res.isSuccess && res.readMessageDTO.Retry < w.optionalConfiguration.Retry {
+					res.readMessageDTO.Retry++
+					logger.Warn("retry ", "name_worker", w.name, "msg", string(res.readMessageDTO.Value), "retry", res.readMessageDTO.Retry)
+					w.workQueue <- res.readMessageDTO
+
+				}
 				<-concurrentRunFunction
-				close(done)
+				close(response)
+
+				continue
 
 			case <-time.After(time.Duration(w.optionalConfiguration.Timeout) * time.Second):
 				logger.Debug("timeout firstfunc", "name_worker", w.name)
 
 				w.errorChannel <- errors.New("timeout firstfunc")
 				<-concurrentRunFunction
-				close(done)
+				close(response)
 
 			}
+
+			logger.Debug("len of channels : ", "workQueue", len(w.workQueue), "response", len(response), "resultQueue", len(w.resultQueue), "err", len(w.errorChannel))
 
 		}
 	}

@@ -8,12 +8,11 @@ import (
 
 func Run(ctx context.Context, kafkaConsumer kafkaConsumer, method FirstClassFunc, kafkaPubliosher kafkaPublisher, optionalConfiguration ...OptionalConfiguration) chan error {
 	opt := validateOptionalConfiguration(optionalConfiguration...)
-	errCh := make(chan error, 3)
+	errCh := make(chan error, 5)
 	go func() {
 		var err error
 		readMessageDTOCh := make(chan ReadMessageDTO, 3)
 		writeMessageDTOCh := make(chan WriteMessageDTO, 3)
-		errorChannel := make(chan error, 3)
 		for {
 
 			err = kafkaConsumer.consumerConnection()
@@ -114,9 +113,11 @@ func Run(ctx context.Context, kafkaConsumer kafkaConsumer, method FirstClassFunc
 		}()
 
 		// worker pool
-		for i := 0; i < opt.Worker; i++ {
+		var i uint8
+
+		for i = 0; i < opt.Worker; i++ {
 			nameWorker := kafkaConsumer.topic + "_to_" + kafkaPubliosher.topic
-			w := newWorker(i+1, nameWorker, method, readMessageDTOCh, writeMessageDTOCh, errorChannel, opt)
+			w := newWorker(i+1, nameWorker, method, readMessageDTOCh, writeMessageDTOCh, errCh, opt)
 			go w.start(ctx)
 
 		}

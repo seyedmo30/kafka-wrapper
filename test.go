@@ -6,18 +6,23 @@ import (
 	"time"
 )
 
-func mockFirstClassFunc(ctx context.Context, workQueue chan ReadMessageDTO, resultQueue chan WriteMessageDTO, errorChannel chan error, done chan struct{}) {
+func mockFirstClassFunc(ctx context.Context, workQueue chan ReadMessageDTO, resultQueue chan WriteMessageDTO, errorChannel chan error, response chan ResponseDTO) {
 	read := <-workQueue
-	// if rand.Intn(10) == 5 {
-	// 	panic("Something went wrong!")
+	if rand.Intn(5) == 1 {
+		panic("Something went wrong!")
 
-	// }
-	// Mock implementation for writing to resultQueue
-	res := generateWriteMessage(string(read.Value))
+	}
+	if rand.Intn(3) == 1 {
+		response <- ResponseDTO{isSuccess: false, readMessageDTO: read}
+
+	} else {
+
+		// Mock implementation for writing to resultQueue
+		res := generateWriteMessage(string(read.Value))
 		resultQueue <- res
+		response <- ResponseDTO{isSuccess: true}
+	}
 
-	done <- struct{}{}
-	
 }
 
 func generateWriteMessage(pre string) WriteMessageDTO {

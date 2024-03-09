@@ -11,6 +11,7 @@ type ReadMessageDTO struct {
 	Key     []byte
 	Value   []byte
 	Headers []Header
+	Retry   uint8
 }
 
 type WriteMessageDTO struct {
@@ -19,11 +20,16 @@ type WriteMessageDTO struct {
 	Headers []Header
 }
 
-type OptionalConfiguration struct {
-	Worker             int
-	Retry              int
-	Timeout            int
-	NumberFuncInWorker int
+type ResponseDTO struct {
+	isSuccess      bool
+	readMessageDTO ReadMessageDTO
 }
 
-type FirstClassFunc func(ctx context.Context, readMessageCh chan ReadMessageDTO, writeMessageCh chan WriteMessageDTO, errCh chan error, done chan struct{})
+type OptionalConfiguration struct {
+	Worker             uint8
+	Retry              uint8
+	Timeout            uint8
+	NumberFuncInWorker uint8
+}
+
+type FirstClassFunc func(ctx context.Context, readMessageCh chan ReadMessageDTO, writeMessageCh chan WriteMessageDTO, errCh chan error, response chan ResponseDTO)
