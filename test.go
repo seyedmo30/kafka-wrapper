@@ -14,10 +14,10 @@ func mockFirstClassFunc(ctx context.Context, workQueue chan ReadMessageDTO, resu
 	// }
 	// Mock implementation for writing to resultQueue
 	res := generateWriteMessage(string(read.Value))
-	resultQueue <- res
+		resultQueue <- res
 
 	done <- struct{}{}
-
+	
 }
 
 func generateWriteMessage(pre string) WriteMessageDTO {
@@ -25,6 +25,7 @@ func generateWriteMessage(pre string) WriteMessageDTO {
 
 	return WriteMessageDTO{
 
+		Key:   []byte(pre + "___" + generateRandomString(2)),
 		Value: []byte(pre + "___" + generateRandomString(2)),
 	}
 }

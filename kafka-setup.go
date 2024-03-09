@@ -2,7 +2,6 @@ package kafkawrapper
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"time"
 
@@ -41,7 +40,7 @@ func (k *kafkaConsumer) getter(ctx context.Context) (ReadMessageDTO, error) {
 	if err == nil {
 		err = k.kafkaConsumerinstance.CommitMessages(ctx, msg)
 		if err != nil {
-			fmt.Println("================", err)
+			logger.Error("kafka cant commit msg", "key", msg.Key)
 		}
 
 	}
@@ -73,7 +72,7 @@ func (k *kafkaPublisher) setter(ctx context.Context, msg WriteMessageDTO) error 
 	for _, v := range msg.Headers {
 		headers = append(headers, protocol.Header{Key: v.Key, Value: v.Value})
 	}
-	slog.Debug("before WriteMessages", "Key : ", msg.Value)
+	slog.Debug("before WriteMessages", "Key : ", msg.Key)
 
 	return k.kafkaPublisherinstance.WriteMessages(ctx, kafkaPachage.Message{
 		Key:     msg.Key,

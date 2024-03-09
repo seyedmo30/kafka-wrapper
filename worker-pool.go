@@ -8,6 +8,7 @@ import (
 
 type worker struct {
 	id                    int
+	name                  string
 	optionalConfiguration OptionalConfiguration
 	function              FirstClassFunc
 	workQueue             chan ReadMessageDTO
@@ -15,7 +16,7 @@ type worker struct {
 	errorChannel          chan error
 }
 
-func newWorker(id int, limitRunFunction int, fn FirstClassFunc, workQueue chan ReadMessageDTO, resultQueue chan WriteMessageDTO, errorChannel chan error, optionalConfiguration OptionalConfiguration) *worker {
+func newWorker(id int, nameWorker string, limitRunFunction int, fn FirstClassFunc, workQueue chan ReadMessageDTO, resultQueue chan WriteMessageDTO, errorChannel chan error, optionalConfiguration OptionalConfiguration) *worker {
 	return &worker{
 		id:                    id,
 		optionalConfiguration: optionalConfiguration,
@@ -37,13 +38,16 @@ func (w *worker) start(ctx context.Context) {
 			return
 		default:
 
-			logger.Debug("wait for receive message from WriteMessageDTO channel")
-			res := <-w.workQueue
-			w.workQueue <- res
-			logger.Debug("receive message from WriteMessageDTO channel")
+			for {
 
+				// "ReadMessageDTO chan is empty"
+				if len(w.workQueue) != 0 {
+					break
+				}
+				time.Sleep(time.Millisecond * 100)
+			}
 			concurrentRunFunction <- struct{}{}
-			logger.Debug("get signal for start run func")
+			logger.Debug("get signal for start run func", "name_worker", w.name)
 
 			done := make(chan struct{}, 1)
 
@@ -54,7 +58,7 @@ func (w *worker) start(ctx context.Context) {
 					}
 				}()
 				// Execute the worker function
-				logger.Debug("start firstfunc ")
+				logger.Debug("start firstfunc ", "name_worker", w.name)
 
 				w.function(ctx, w.workQueue, w.resultQueue, w.errorChannel, done)
 				// Close the done channel when the worker function completes
@@ -63,13 +67,13 @@ func (w *worker) start(ctx context.Context) {
 			select {
 
 			case <-done:
-				logger.Debug("send firstfunc complete signal ")
+				logger.Debug("send firstfunc complete signal ", "name_worker", w.name)
 
 				<-concurrentRunFunction
 				close(done)
 
 			case <-time.After(time.Duration(w.optionalConfiguration.Timeout) * time.Second):
-				logger.Debug("timeout firstfunc")
+				logger.Debug("timeout firstfunc", "name_worker", w.name)
 
 				w.errorChannel <- errors.New("timeout firstfunc")
 				<-concurrentRunFunction

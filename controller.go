@@ -81,7 +81,7 @@ func Run(ctx context.Context, kafkaConsumer kafkaConsumer, method FirstClassFunc
 
 				}
 				readMessageDTOCh <- ReadMessageDTO{Key: msg.Key, Value: msg.Value, Headers: headers}
-
+				logger.Debug("msg send to chan ReadMessageDTO success :", "value", string(msg.Value))
 			}
 		}()
 
@@ -115,8 +115,8 @@ func Run(ctx context.Context, kafkaConsumer kafkaConsumer, method FirstClassFunc
 
 		// worker pool
 		for i := 0; i < opt.Worker; i++ {
-
-			w := newWorker(i+1, 10, method, readMessageDTOCh, writeMessageDTOCh, errorChannel, opt)
+			nameWorker := kafkaConsumer.topic + "_to_" + kafkaPubliosher.topic
+			w := newWorker(i+1, nameWorker, 10, method, readMessageDTOCh, writeMessageDTOCh, errorChannel, opt)
 			go w.start(ctx)
 
 		}

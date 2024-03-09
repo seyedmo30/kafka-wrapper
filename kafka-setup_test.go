@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"os"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -22,37 +24,26 @@ func TestKafkaConsumerSetup(t *testing.T) {
 }
 
 func TestConsumerConnection_Success(t *testing.T) {
-	socket := "localhost:9092"
-	topic := "test"
-	groupID := "test_1"
+	socket := "10.21.15.99:21692"
+	topic := "_test5"
+	groupID := "3"
 
 	consumer := KafkaConsumerSetup(socket, topic, groupID)
 
 	err := consumer.consumerConnection()
 
 	assert.NoError(t, err, "Expected no error during Kafka connection")
+	for i := 1; ; i++ {
 
-	msg, err := consumer.getter(context.Background())
-	fmt.Printf("%+v \n", string(msg.Value))
-	fmt.Println("err :", err)
-	// c()
-	// assert.NoError(t, err, "Expected no error during Kafka connection")
+		if msg, err := consumer.getter(context.Background()); err != nil {
 
-	msg, err = consumer.getter(context.Background())
-	fmt.Printf("%+v \n", string(msg.Value))
-	fmt.Println("err :", err)
+			fmt.Fprintln(os.Stdout, []any{"err :", i, err}...)
+		} else {
 
-	msg, err = consumer.getter(context.Background())
-	fmt.Printf("%+v \n", string(msg.Value))
-	fmt.Println("err :", err)
+			fmt.Printf("%d _ %+v \n", i, string(msg.Value))
+		}
 
-	msg, err = consumer.getter(context.Background())
-	fmt.Printf("%+v \n", string(msg.Value))
-	fmt.Println("err :", err)
-
-	msg, err = consumer.getter(context.Background())
-	fmt.Printf("%+v \n", string(msg.Value))
-	fmt.Println("err :", err)
+	}
 
 }
 
@@ -70,7 +61,7 @@ func TestConsumerConnection_Failure(t *testing.T) {
 }
 
 func TestPublisherConnection_Success(t *testing.T) {
-	socket := "10.21.15.99:21692"
+	socket := "localhost:9092"
 	topic := "_test1"
 	publisher := KafkaPublisherSetup(socket, topic)
 
@@ -78,22 +69,22 @@ func TestPublisherConnection_Success(t *testing.T) {
 
 	assert.NoError(t, err, "Expected no error during Kafka connection")
 
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 20; i++ {
 
 		err = publisher.setter(context.Background(), WriteMessageDTO{
 			Key:   []byte(generateRandomString(3)),
 			Value: []byte(generateRandomString(3)),
 		})
 		fmt.Println(err)
-		time.Sleep(1 * time.Second)
+		// time.Sleep(1 * time.Second)
 	}
 }
 
 func TestKafkaIntegration(t *testing.T) {
 	// Setup Kafka broker configuration
 	socket := "localhost:9092"
-	topic := "test"
-	groupID := "test"
+	topic := "test1"
+	groupID := "1"
 
 	// Setup Kafka consumer
 	consumer := KafkaConsumerSetup(socket, topic, groupID)
