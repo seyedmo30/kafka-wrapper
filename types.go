@@ -33,3 +33,7 @@ type OptionalConfiguration struct {
 }
 
 type FirstClassFunc func(ctx context.Context, readMessageCh chan ReadMessageDTO, writeMessageCh chan WriteMessageDTO, errCh chan error, response chan ResponseDTO)
+
+type FirstClassFuncOnlyConsumer func(ctx context.Context, readMessageCh chan ReadMessageDTO, errCh chan error, response chan ResponseDTO)
+
+type FirstClassFuncOnlyPublisher func(ctx context.Context, writeMessageCh chan WriteMessageDTO, errCh chan error, response chan ResponseDTO)

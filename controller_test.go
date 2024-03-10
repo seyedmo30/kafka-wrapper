@@ -30,7 +30,7 @@ func TestRun(t *testing.T) {
 	errCh = Run(context.Background(), consumer2, mockFirstClassFunc, publisher2, opt)
 
 	for value := range errCh {
-		logger.Error("============================= Received value:" + value.Error())
+		logger.Error(" Received error:" + value.Error())
 	}
 
 }
