@@ -37,9 +37,8 @@ func newWorker(id uint8, nameWorker string, fn FirstClassFunc, workQueue chan Re
 }
 
 type workerOnlyConsumer struct {
-	function    FirstClassFuncOnlyConsumer
-	workQueue   chan ReadMessageDTO
-	resultQueue chan WriteMessageDTO
+	function  FirstClassFuncOnlyConsumer
+	workQueue chan ReadMessageDTO
 	baseWorker
 }
 
@@ -126,7 +125,7 @@ func (w *worker) start(ctx context.Context) {
 	}
 }
 
-func (w *worker) startOnlyConsumer(ctx context.Context) {
+func (w *workerOnlyConsumer) startOnlyConsumer(ctx context.Context) {
 	concurrentRunFunction := make(chan struct{}, w.optionalConfiguration.NumberFuncInWorker)
 	defer close(concurrentRunFunction)
 
@@ -159,7 +158,7 @@ func (w *worker) startOnlyConsumer(ctx context.Context) {
 				// Execute the worker function
 				logger.Debug("start firstfunc ", "name_worker", w.name)
 
-				w.function(ctx, w.workQueue, w.resultQueue, w.errorChannel, response)
+				w.function(ctx, w.workQueue, w.errorChannel, response)
 				// Close the done channel when the worker function completes
 			}()
 
@@ -188,7 +187,7 @@ func (w *worker) startOnlyConsumer(ctx context.Context) {
 
 			}
 
-			logger.Debug("len of channels : ", "workQueue", len(w.workQueue), "response", len(response), "resultQueue", len(w.resultQueue), "err", len(w.errorChannel))
+			logger.Debug("len of channels : ", "workQueue", len(w.workQueue), "response", len(response), "err", len(w.errorChannel))
 
 		}
 	}

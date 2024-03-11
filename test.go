@@ -25,6 +25,25 @@ func mockFirstClassFunc(ctx context.Context, workQueue chan ReadMessageDTO, resu
 
 }
 
+func mockFirstClassFuncOnlyConsumer(ctx context.Context, workQueue chan ReadMessageDTO, errorChannel chan error, response chan ResponseDTO) {
+	read := <-workQueue
+	if rand.Intn(5) == 1 {
+		panic("Something went wrong!")
+
+	}
+	if rand.Intn(5) == 1 {
+		response <- ResponseDTO{isSuccess: false, readMessageDTO: read}
+
+	} else {
+
+		time.Sleep(time.Second * time.Duration(rand.Intn(2)+1))
+
+		logger.Info("success :) mockFirstClassFuncOnlyConsumer")
+		response <- ResponseDTO{isSuccess: true}
+	}
+
+}
+
 func generateWriteMessage(pre string) WriteMessageDTO {
 	time.Sleep(time.Second * time.Duration(rand.Intn(2)+1))
 

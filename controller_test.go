@@ -29,8 +29,13 @@ func TestRun(t *testing.T) {
 	publisher2 := KafkaPublisherSetup(socket, topic_publisher2)
 	errCh = Run(context.Background(), consumer2, mockFirstClassFunc, publisher2, opt)
 
+	topic_consumer3 := "_test3"
+	groupID_consumer3 := "fsdewr"
+	consumer3 := KafkaConsumerSetup(socket, topic_consumer3, groupID_consumer3)
+
+	errCh = RunOnlyConsumer(context.Background(), consumer3, mockFirstClassFuncOnlyConsumer, opt)
+
 	for value := range errCh {
 		logger.Error(" Received error:" + value.Error())
 	}
-
 }
