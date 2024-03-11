@@ -41,7 +41,7 @@ func RunOnlyConsumer(ctx context.Context, kafkaConsumer kafkaConsumer, method Fi
 		for i = 0; i < opt.Worker; i++ {
 			nameWorker := "only_consumer_" + kafkaConsumer.topic
 			w := newWorkerOnlyConsumer(i+1, nameWorker, method, readMessageDTOCh, errCh, opt)
-			go w.startOnlyConsumer(ctx)
+			go w.start(ctx)
 
 		}
 	}()
