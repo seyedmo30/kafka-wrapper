@@ -1,12 +1,12 @@
 package pkg
 
 import (
+	"fmt"
 	"os"
-	"time"
+	"reflect"
+	"strings"
 
 	"log/slog"
-
-	"github.com/lmittmann/tint"
 )
 
 var logger *slog.Logger
@@ -14,16 +14,16 @@ var logger *slog.Logger
 func init() {
 
 	// for product
-	// h := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-	// 	Level:     slog.LevelError,
-	// })
+	h := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelError,
+	})
 
 	// for develop
-	h := tint.NewHandler(os.Stderr, &tint.Options{
-		AddSource:  true,
-		Level:      slog.LevelDebug,
-		TimeFormat: time.Kitchen,
-	})
+	// h := tint.NewHandler(os.Stderr, &tint.Options{
+	// 	AddSource:  true,
+	// 	Level:      slog.LevelDebug,
+	// 	TimeFormat: time.Kitchen,
+	// })
 
 	logger = slog.New(h)
 
@@ -80,4 +80,21 @@ type LogSTD struct {
 	APIKey              string      `json:"apiKey,omitempty"`
 	APIKeyName          string      `json:"apiKeyName,omitempty"`
 	ParentCorrelationID string      `json:"parentCorrelationId,omitempty"`
+}
+
+func (l *LogSTD) Log() {
+	v := reflect.ValueOf(l).Elem()
+	t := reflect.TypeOf(l).Elem()
+
+	for i := 0; i < v.NumField(); i++ {
+		field := t.Field(i)
+		tag := field.Tag.Get("json")
+		tag = strings.Split(tag, ",")[0]
+		value := v.Field(i).Interface()
+
+		// Check if the field is not the zero value for its type
+		if !reflect.DeepEqual(value, reflect.Zero(field.Type).Interface()) {
+			fmt.Printf("%s: %v\n", tag, value)
+		}
+	}
 }
