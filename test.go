@@ -25,6 +25,20 @@ func mockFirstClassFunc(ctx context.Context, workQueue chan ReadMessageDTO, resu
 
 }
 
+func mockPublisher() chan WriteMessageDTO {
+	writeMessageCh := make(chan WriteMessageDTO, 5)
+	go func() {
+
+		for {
+
+			gen := generateWriteMessage(generateRandomString(2))
+			writeMessageCh <- gen
+			logger.Debug("send success to topic", "msg", string(gen.Key))
+		}
+	}()
+	return writeMessageCh
+}
+
 func mockFirstClassFuncOnlyConsumer(ctx context.Context, workQueue chan ReadMessageDTO, errorChannel chan error, response chan ResponseDTO) {
 	read := <-workQueue
 	if rand.Intn(5) == 1 {

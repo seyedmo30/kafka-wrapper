@@ -28,6 +28,20 @@ func Run(ctx context.Context, kafkaConsumer kafkaConsumer, method FirstClassFunc
 	return errCh
 }
 
+func RunOnlyPublisher(ctx context.Context, kafkaPublisher kafkaPublisher, writeMessageCh chan WriteMessageDTO) chan error {
+	errCh := make(chan error, 5)
+
+	writeMessageDTOCh := publisherController(ctx, kafkaPublisher, errCh)
+
+	for writeMessage := range writeMessageCh {
+
+		writeMessageDTOCh <- writeMessage
+	}
+	// worker pool
+
+	return errCh
+}
+
 func RunOnlyConsumer(ctx context.Context, kafkaConsumer kafkaConsumer, method FirstClassFuncOnlyConsumer, optionalConfiguration ...OptionalConfiguration) chan error {
 	opt := validateOptionalConfiguration(optionalConfiguration...)
 	errCh := make(chan error, 5)
@@ -56,7 +70,6 @@ func consumerController(ctx context.Context, kafkaConsumer kafkaConsumer, errCh 
 		err := kafkaConsumer.consumerConnection()
 
 		if err != nil {
-			// TODO
 			logger.Error("kafka Consumer cant connect", "external_error", err.Error())
 
 			errCh <- err
@@ -72,37 +85,48 @@ func consumerController(ctx context.Context, kafkaConsumer kafkaConsumer, errCh 
 		defer close(readMessageDTOCh)
 
 		for {
-			logger.Debug("start read msg", "topic", kafkaConsumer.topic)
 
-			msg, err := kafkaConsumer.getter(ctx)
-
-			if err != nil {
-				logger.Error("kafka cant read message ", "external_error", err.Error(), "topic", kafkaConsumer.topic)
-				errCh <- err
-
-				if strings.Contains(err.Error(), "connection refused") {
-					for {
-
-						errCh <- err
-
-						time.Sleep(5 * time.Second)
-
-						if err = kafkaConsumer.consumerConnection(); err == nil {
-							break
-						}
-						logger.Error("kafka Consumer cant connect", "external_error", err.Error())
-					}
+			select {
+			case <-ctx.Done():
+				if err := kafkaConsumer.close(); err != nil {
+					logger.Debug(err.Error())
 
 				}
-				continue
-			}
-			headers := make([]Header, 0, 1)
-			for _, header := range msg.Headers {
-				headers = append(headers, Header{Key: header.Key})
+				select {}
+			default:
+				logger.Debug("start read msg", "topic", kafkaConsumer.topic)
+
+				msg, err := kafkaConsumer.getter(ctx)
+
+				if err != nil {
+					logger.Error("kafka cant read message ", "external_error", err.Error(), "topic", kafkaConsumer.topic)
+					errCh <- err
+
+					if strings.Contains(err.Error(), "connection refused") {
+						for {
+
+							errCh <- err
+
+							time.Sleep(5 * time.Second)
+
+							if err = kafkaConsumer.consumerConnection(); err == nil {
+								break
+							}
+							logger.Error("kafka Consumer cant connect", "external_error", err.Error())
+						}
+
+					}
+					continue
+				}
+				headers := make([]Header, 0, 1)
+				for _, header := range msg.Headers {
+					headers = append(headers, Header{Key: header.Key})
+
+				}
+				readMessageDTOCh <- ReadMessageDTO{Key: msg.Key, Value: msg.Value, Headers: headers}
+				logger.Debug("msg send to chan ReadMessageDTO success :", "value", string(msg.Value))
 
 			}
-			readMessageDTOCh <- ReadMessageDTO{Key: msg.Key, Value: msg.Value, Headers: headers}
-			logger.Debug("msg send to chan ReadMessageDTO success :", "value", string(msg.Value))
 		}
 	}()
 	return readMessageDTOCh
@@ -133,7 +157,7 @@ func publisherController(ctx context.Context, kafkaPublisher kafkaPublisher, err
 		defer close(writeMessageDTOCh)
 
 		for message := range writeMessageDTOCh {
-			if err := kafkaPublisher.setter(ctx, message); err != nil {
+			if err := kafkaPublisher.setter(context.Background(), message); err != nil {
 				logger.Error("kafka Consumer cant connect", "external_error", err.Error())
 				errCh <- err
 

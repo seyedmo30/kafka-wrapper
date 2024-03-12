@@ -2,6 +2,7 @@ package kafkawrapper
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"time"
 
@@ -36,27 +37,43 @@ func KafkaPublisherSetup(Socket string, Topic string) kafkaPublisher {
 
 // getter reads a message from Kafka.
 func (k *kafkaConsumer) getter(ctx context.Context) (ReadMessageDTO, error) {
-	msg, err := k.kafkaConsumerinstance.ReadMessage(ctx)
-	if err == nil {
-		err = k.kafkaConsumerinstance.CommitMessages(ctx, msg)
-		if err != nil {
-			logger.Error("kafka cant commit msg", "key", msg.Key)
+
+	select {
+	case <-ctx.Done():
+		k.close()
+		return ReadMessageDTO{}, errors.New("connection close")
+
+	default:
+
+		msg, err := k.kafkaConsumerinstance.ReadMessage(ctx)
+		if err == nil {
+			err = k.kafkaConsumerinstance.CommitMessages(ctx, msg)
+			if err != nil {
+				logger.Error("kafka cant commit msg", "key", msg.Key)
+			}
+
+		}
+		headers := make([]Header, 0, 1)
+		for _, header := range msg.Headers {
+			headers = append(headers, Header{Key: header.Key, Value: header.Value})
+
 		}
 
-	}
-	headers := make([]Header, 0, 1)
-	for _, header := range msg.Headers {
-		headers = append(headers, Header{Key: header.Key, Value: header.Value})
+		return ReadMessageDTO{Key: msg.Key, Value: msg.Value, Headers: headers}, err
 
 	}
-
-	return ReadMessageDTO{Key: msg.Key, Value: msg.Value, Headers: headers}, err
 }
 
 // close closes the KafkaConsumer instance.
 func (k *kafkaConsumer) close() error {
 	slog.Info("before close Consumer connection")
-	return k.kafkaConsumerinstance.Close()
+	err := k.kafkaConsumerinstance.Close()
+	if err == nil {
+
+		slog.Info(" Consumer connection closed success")
+	}
+	return err
+
 }
 
 // close closes the KafkaPublisher instance.

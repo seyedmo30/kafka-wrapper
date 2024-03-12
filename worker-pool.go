@@ -3,6 +3,8 @@ package kafkawrapper
 import (
 	"context"
 	"errors"
+	"os"
+	"runtime"
 	"time"
 )
 
@@ -48,74 +50,87 @@ func (w *worker) start(ctx context.Context) {
 	concurrentRunFunction := make(chan struct{}, w.optionalConfiguration.NumberFuncInWorker)
 	defer close(concurrentRunFunction)
 
-	for {
-		select {
-		case <-ctx.Done():
-			logger.Warn("context done")
-			return
-		default:
+	go func() {
 
-			for {
+		<-ctx.Done()
+		for {
 
-				// "ReadMessageDTO chan is empty"
-				if len(w.workQueue) != 0 {
-					break
-				}
-				time.Sleep(time.Millisecond * 100)
+			time.Sleep(time.Second)
+			if len(w.workQueue) == 0 && len(w.resultQueue) == 0 && len(w.errorChannel) == 0 {
+				logger.Info("all channel are empty and graceful exit")
+				os.Exit(0)
 			}
-			concurrentRunFunction <- struct{}{}
-			logger.Debug("get signal for start run func", "name_worker", w.name)
-
-			response := make(chan ResponseDTO)
-
-			go func() {
-				defer func() {
-					if r := recover(); r != nil {
-						logger.Warn("Panic recovered", "external_error", r)
-					}
-				}()
-				// Execute the worker function
-				logger.Debug("start firstfunc ", "name_worker", w.name)
-
-				if w.functionOnlyConsumer != nil {
-					w.functionOnlyConsumer(ctx, w.workQueue, w.errorChannel, response)
-
-				}
-
-				if w.function != nil {
-
-					w.function(ctx, w.workQueue, w.resultQueue, w.errorChannel, response)
-				}
-				// Close the done channel when the worker function completes
-			}()
-
-			select {
-
-			case res := <-response:
-				logger.Debug("send firstfunc signal ", "name_worker", w.name)
-
-				if !res.isSuccess && res.readMessageDTO.Retry < w.optionalConfiguration.Retry {
-					res.readMessageDTO.Retry++
-					logger.Warn("retry ", "name_worker", w.name, "msg", string(res.readMessageDTO.Value), "retry", res.readMessageDTO.Retry)
-					w.workQueue <- res.readMessageDTO
-
-				}
-				<-concurrentRunFunction
-				close(response)
-
-				continue
-
-			case <-time.After(time.Duration(w.optionalConfiguration.Timeout) * time.Second):
-				logger.Debug("timeout firstfunc", "name_worker", w.name)
-
-				w.errorChannel <- errors.New("timeout firstfunc")
-				<-concurrentRunFunction
-				close(response)
-
-			}
-
-			logger.Debug("len of channels : ", "workQueue", len(w.workQueue), "response", len(response), "resultQueue", len(w.resultQueue), "err", len(w.errorChannel))
+			logger.Debug("wait for empty channel : ", "workQueue", len(w.workQueue), "resultQueue", len(w.resultQueue), "err", len(w.errorChannel))
 
 		}
+	}()
+
+	for {
+
+		for {
+
+			// "ReadMessageDTO chan is empty"
+			if len(w.workQueue) != 0 {
+				break
+			}
+			time.Sleep(time.Millisecond * 100)
+		}
+		concurrentRunFunction <- struct{}{}
+		logger.Debug("get signal for start run func", "name_worker", w.name)
+
+		response := make(chan ResponseDTO)
+
+		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					logger.Warn("Panic recovered", "external_error", r)
+				}
+			}()
+			// Execute the worker function
+			logger.Debug("start firstfunc ", "name_worker", w.name)
+
+			if w.functionOnlyConsumer != nil {
+				w.functionOnlyConsumer(ctx, w.workQueue, w.errorChannel, response)
+
+			}
+
+			if w.function != nil {
+
+				w.function(ctx, w.workQueue, w.resultQueue, w.errorChannel, response)
+			}
+			// Close the done channel when the worker function completes
+		}()
+
+		select {
+
+		case res := <-response:
+			logger.Debug("send firstfunc signal ", "name_worker", w.name)
+
+			if !res.isSuccess && res.readMessageDTO.Retry < w.optionalConfiguration.Retry {
+				res.readMessageDTO.Retry++
+				logger.Debug("retry ", "name_worker", w.name, "msg", string(res.readMessageDTO.Value), "retry", res.readMessageDTO.Retry)
+				w.workQueue <- res.readMessageDTO
+
+			}
+			<-concurrentRunFunction
+			close(response)
+
+			continue
+
+		case <-time.After(time.Duration(w.optionalConfiguration.Timeout) * time.Second):
+			logger.Debug("timeout firstfunc", "name_worker", w.name)
+
+			w.errorChannel <- errors.New("timeout firstfunc")
+			<-concurrentRunFunction
+			close(response)
+
+		}
+
+		logger.Debug("len of channels : ", "workQueue", len(w.workQueue), "response", len(response), "resultQueue", len(w.resultQueue), "err", len(w.errorChannel))
+		var m runtime.MemStats
+		runtime.ReadMemStats(&m)
+
+		logger.Debug("htop ===>", "Alloc-MB", m.Alloc/1024/1024, "TotalAlloc-MB", m.TotalAlloc/1024/1024, "Sys-MB", m.Sys/1024/1024, "NumGC", m.NumGC, "NumGoroutine", runtime.NumGoroutine())
+
 	}
 }
