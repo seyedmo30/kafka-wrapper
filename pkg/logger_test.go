@@ -4,9 +4,9 @@ import "testing"
 
 func TestMain1(t *testing.T) {
 
-	l := LogSTD{
+	l := StdLog{
 		Error:     "sample error",
-		ErrorType: "error type",
+		ErrorType: "ErrorType",
 
 		UserID:          "123",
 		Username:        "user1",
@@ -14,5 +14,5 @@ func TestMain1(t *testing.T) {
 		ResStatus:       200,
 	}
 
-	l.Log()
+	l.Log("test error")
 }

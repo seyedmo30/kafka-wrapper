@@ -1,7 +1,6 @@
 package pkg
 
 import (
-	"fmt"
 	"os"
 	"reflect"
 	"strings"
@@ -15,7 +14,7 @@ func init() {
 
 	// for product
 	h := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelError,
+		Level: slog.LevelInfo,
 	})
 
 	// for develop
@@ -29,7 +28,7 @@ func init() {
 
 }
 
-type LogSTD struct {
+type StdLog struct {
 	Error               interface{} `json:"error,omitempty"`
 	ErrorType           string      `json:"errorType,omitempty"`
 	ErrorStack          interface{} `json:"errorStack,omitempty"`
@@ -82,9 +81,10 @@ type LogSTD struct {
 	ParentCorrelationID string      `json:"parentCorrelationId,omitempty"`
 }
 
-func (l *LogSTD) Log() {
+func (l *StdLog) Log(mainMessage string) {
 	v := reflect.ValueOf(l).Elem()
 	t := reflect.TypeOf(l).Elem()
+	mapList := make([]interface{}, 0, 10)
 
 	for i := 0; i < v.NumField(); i++ {
 		field := t.Field(i)
@@ -94,7 +94,8 @@ func (l *LogSTD) Log() {
 
 		// Check if the field is not the zero value for its type
 		if !reflect.DeepEqual(value, reflect.Zero(field.Type).Interface()) {
-			fmt.Printf("%s: %v\n", tag, value)
+			mapList = append(mapList, tag, value)
 		}
 	}
+	logger.Info(mainMessage, mapList...)
 }
