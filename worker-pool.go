@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"runtime"
+	"sync"
 	"time"
 )
 
@@ -48,6 +49,7 @@ func newWorkerOnlyConsumer(id uint8, nameWorker string, fn FirstClassFuncOnlyCon
 
 func (w *worker) start(ctx context.Context) {
 	concurrentRunFunction := make(chan struct{}, w.optionalConfiguration.NumberFuncInWorker)
+	var wgFunc sync.WaitGroup
 	defer close(concurrentRunFunction)
 
 	go func() {
@@ -66,6 +68,7 @@ func (w *worker) start(ctx context.Context) {
 	}()
 
 	for {
+		
 
 		for {
 
@@ -88,6 +91,8 @@ func (w *worker) start(ctx context.Context) {
 			}()
 			// Execute the worker function
 			logger.Debug("start firstfunc ", "name_worker", w.name)
+
+			wgFunc.Add(1)
 
 			if w.functionOnlyConsumer != nil {
 				w.functionOnlyConsumer(ctx, w.workQueue, w.errorChannel, response)
@@ -125,6 +130,7 @@ func (w *worker) start(ctx context.Context) {
 			close(response)
 
 		}
+		wgFunc.Done()
 
 		logger.Debug("len of channels : ", "workQueue", len(w.workQueue), "response", len(response), "resultQueue", len(w.resultQueue), "err", len(w.errorChannel))
 		var m runtime.MemStats
@@ -133,4 +139,7 @@ func (w *worker) start(ctx context.Context) {
 		logger.Debug("htop ===>", "Alloc-MB", m.Alloc/1024/1024, "TotalAlloc-MB", m.TotalAlloc/1024/1024, "Sys-MB", m.Sys/1024/1024, "NumGC", m.NumGC, "NumGoroutine", runtime.NumGoroutine())
 
 	}
+	
+	wgFunc.Wait()
+
 }

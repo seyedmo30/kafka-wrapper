@@ -12,10 +12,10 @@ import (
 
 // kafkaConsumer represents a Kafka consumer.
 type kafkaConsumer struct {
-	socket                string              // Kafka broker address
-	topic                 string              // Topic to consume messages from
-	groupID               string              // Consumer group ID
-	kafkaConsumerinstance kafkaPachage.Reader // Kafka reader instance
+	socket                string               // Kafka broker address
+	topic                 string               // Topic to consume messages from
+	groupID               string               // Consumer group ID
+	kafkaConsumerinstance *kafkaPachage.Reader // Kafka reader instance
 }
 
 // KafkaConsumerSetup initializes and returns a new KafkaConsumer instance.
@@ -25,9 +25,9 @@ func KafkaConsumerSetup(Socket string, Topic string, GroupID string) kafkaConsum
 
 // kafkaPublisher represents a Kafka publisher.
 type kafkaPublisher struct {
-	socket                 string              // Kafka broker address
-	topic                  string              // Topic to publish messages to
-	kafkaPublisherinstance kafkaPachage.Writer // Kafka writer instance
+	socket                 string               // Kafka broker address
+	topic                  string               // Topic to publish messages to
+	kafkaPublisherinstance *kafkaPachage.Writer // Kafka writer instance
 }
 
 // KafkaPublisherSetup initializes and returns a new KafkaPublisher instance.
@@ -122,7 +122,7 @@ func (k *kafkaPublisher) publisherConnection() error {
 	})
 
 	// Assign the Kafka writer instance to the kafkaPublisherinstance
-	k.kafkaPublisherinstance = *conn
+	k.kafkaPublisherinstance = conn
 
 	return nil
 }
@@ -154,7 +154,7 @@ func (k *kafkaConsumer) consumerConnection() error {
 	})
 
 	// Assign the Kafka reader instance to the kafkaConsumerinstance
-	k.kafkaConsumerinstance = *conn
+	k.kafkaConsumerinstance = conn
 
 	return nil
 }

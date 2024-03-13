@@ -8,12 +8,12 @@ import (
 
 func Run(ctx context.Context, kafkaConsumer kafkaConsumer, method FirstClassFunc, kafkaPublisher kafkaPublisher, optionalConfiguration ...OptionalConfiguration) chan error {
 	opt := validateOptionalConfiguration(optionalConfiguration...)
-	errCh := make(chan error, 5)
+	errCh := make(chan error, opt.ErrorChannelBufferSize)
 	go func() {
 
-		readMessageDTOCh := consumerController(ctx, kafkaConsumer, errCh)
+		readMessageDTOCh := consumerController(ctx, kafkaConsumer, errCh, opt)
 
-		writeMessageDTOCh := publisherController(ctx, kafkaPublisher, errCh)
+		writeMessageDTOCh := publisherController(ctx, kafkaPublisher, errCh, opt)
 
 		// worker pool
 		var i uint8
@@ -28,10 +28,12 @@ func Run(ctx context.Context, kafkaConsumer kafkaConsumer, method FirstClassFunc
 	return errCh
 }
 
-func RunOnlyPublisher(ctx context.Context, kafkaPublisher kafkaPublisher, writeMessageCh chan WriteMessageDTO) chan error {
-	errCh := make(chan error, 5)
+func RunOnlyPublisher(ctx context.Context, kafkaPublisher kafkaPublisher, writeMessageCh chan WriteMessageDTO, optionalConfiguration ...OptionalConfiguration) chan error {
+	opt := validateOptionalConfiguration(optionalConfiguration...)
 
-	writeMessageDTOCh := publisherController(ctx, kafkaPublisher, errCh)
+	errCh := make(chan error, opt.ErrorChannelBufferSize)
+
+	writeMessageDTOCh := publisherController(ctx, kafkaPublisher, errCh, opt)
 	go func() {
 
 		for writeMessage := range writeMessageCh {
@@ -45,10 +47,10 @@ func RunOnlyPublisher(ctx context.Context, kafkaPublisher kafkaPublisher, writeM
 
 func RunOnlyConsumer(ctx context.Context, kafkaConsumer kafkaConsumer, method FirstClassFuncOnlyConsumer, optionalConfiguration ...OptionalConfiguration) chan error {
 	opt := validateOptionalConfiguration(optionalConfiguration...)
-	errCh := make(chan error, 5)
+	errCh := make(chan error, opt.ErrorChannelBufferSize)
 	go func() {
 
-		readMessageDTOCh := consumerController(ctx, kafkaConsumer, errCh)
+		readMessageDTOCh := consumerController(ctx, kafkaConsumer, errCh, opt)
 
 		// worker pool
 		var i uint8
@@ -63,9 +65,9 @@ func RunOnlyConsumer(ctx context.Context, kafkaConsumer kafkaConsumer, method Fi
 	return errCh
 }
 
-func consumerController(ctx context.Context, kafkaConsumer kafkaConsumer, errCh chan error) chan ReadMessageDTO {
+func consumerController(ctx context.Context, kafkaConsumer kafkaConsumer, errCh chan error, opt OptionalConfiguration) chan ReadMessageDTO {
 
-	readMessageDTOCh := make(chan ReadMessageDTO, 3)
+	readMessageDTOCh := make(chan ReadMessageDTO, opt.ConsumerChannelBufferSize)
 	for {
 
 		err := kafkaConsumer.consumerConnection()
@@ -133,8 +135,8 @@ func consumerController(ctx context.Context, kafkaConsumer kafkaConsumer, errCh 
 	return readMessageDTOCh
 }
 
-func publisherController(ctx context.Context, kafkaPublisher kafkaPublisher, errCh chan error) chan WriteMessageDTO {
-	writeMessageDTOCh := make(chan WriteMessageDTO, 3)
+func publisherController(ctx context.Context, kafkaPublisher kafkaPublisher, errCh chan error, opt OptionalConfiguration) chan WriteMessageDTO {
+	writeMessageDTOCh := make(chan WriteMessageDTO, opt.PublisherChannelBufferSize)
 
 	for {
 

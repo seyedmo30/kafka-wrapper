@@ -16,19 +16,25 @@ var logger *slog.Logger
 
 func init() {
 
-	// for product
-	// h := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-	// 	Level:     slog.LevelError,
-	// })
+	env := os.Getenv("ENVIRONMENT")
 
-	// for develop
-	h := tint.NewHandler(os.Stderr, &tint.Options{
-		AddSource:  true,
-		Level:      slog.LevelDebug,
-		TimeFormat: time.Kitchen,
-	})
+	if env == "development" {
 
-	logger = slog.New(h)
+		// for develop
+
+		logger = slog.New(tint.NewHandler(os.Stderr, &tint.Options{
+			AddSource:  true,
+			Level:      slog.LevelDebug,
+			TimeFormat: time.Kitchen,
+		}))
+
+	} else {
+
+		logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+			Level: slog.LevelError,
+		}))
+
+	}
 
 }
 

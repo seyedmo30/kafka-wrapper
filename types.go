@@ -26,10 +26,13 @@ type ResponseDTO struct {
 }
 
 type OptionalConfiguration struct {
-	Worker             uint8
-	Retry              uint8
-	Timeout            uint8
-	NumberFuncInWorker uint8
+	Worker                     uint8
+	Retry                      uint8
+	Timeout                    uint8
+	NumberFuncInWorker         uint8
+	ErrorChannelBufferSize     uint8
+	ConsumerChannelBufferSize  uint8
+	PublisherChannelBufferSize uint8
 }
 
 type FirstClassFunc func(ctx context.Context, readMessageCh chan ReadMessageDTO, writeMessageCh chan WriteMessageDTO, errCh chan error, response chan ResponseDTO)
