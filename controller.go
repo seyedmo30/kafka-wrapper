@@ -32,13 +32,14 @@ func RunOnlyPublisher(ctx context.Context, kafkaPublisher kafkaPublisher, writeM
 	errCh := make(chan error, 5)
 
 	writeMessageDTOCh := publisherController(ctx, kafkaPublisher, errCh)
+	go func() {
 
-	for writeMessage := range writeMessageCh {
+		for writeMessage := range writeMessageCh {
 
-		writeMessageDTOCh <- writeMessage
-	}
-	// worker pool
-
+			writeMessageDTOCh <- writeMessage
+		}
+		// worker pool
+	}()
 	return errCh
 }
 

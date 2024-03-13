@@ -4,10 +4,29 @@ import (
 	"context"
 	"math/rand"
 	"time"
+
+	"git.revue.ir/neo/backend/libs/kafka-wrapper/pkg"
 )
 
 func mockFirstClassFunc(ctx context.Context, workQueue chan ReadMessageDTO, resultQueue chan WriteMessageDTO, errorChannel chan error, response chan ResponseDTO) {
+
 	read := <-workQueue
+
+	logReq := pkg.StdLog{
+		Type:      "HTTP Request",
+		Message:   "Received a GET request",
+		ReqMethod: "GET",
+		ReqURL:    "/api/v1/users",
+		ReqParams: "",
+		ReqQuery:  "page=1&limit=10",
+		ReqHeaders: map[string]string{
+			"User-Agent": "Mozilla/5.0",
+			"Accept":     "application/json",
+		},
+	}
+
+	logReq.Log("get req test")
+
 	if rand.Intn(5) == 1 {
 		panic("Something went wrong!")
 
@@ -22,6 +41,26 @@ func mockFirstClassFunc(ctx context.Context, workQueue chan ReadMessageDTO, resu
 		resultQueue <- res
 		response <- ResponseDTO{isSuccess: true}
 	}
+
+	log := pkg.StdLog{
+		Error:            nil,
+		ErrorType:        "Validation Error",
+		ErrorDescription: "Invalid input data",
+		ErrorStatus:      400,
+		UserID:           "12345",
+		Username:         "mostafa",
+		Type:             "HTTP Request",
+		Payload:          "{\"key\":\"value\"}",
+		Message:          "Invalid input data received",
+		ReqMethod:        "POST",
+		ReqURL:           "/api/v1/user",
+		ReqParams:        "",
+		ReqQuery:         "",
+		ResStatus:        400,
+		ResStatusText:    "Bad Request",
+		Process:          nil,
+	}
+	log.Log("test log")
 
 }
 
