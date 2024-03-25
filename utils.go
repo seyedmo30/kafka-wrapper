@@ -13,6 +13,7 @@ func validateOptionalConfiguration(optionalConfiguration ...OptionalConfiguratio
 		ErrorChannelBufferSize:     5,
 		ConsumerChannelBufferSize:  5,
 		PublisherChannelBufferSize: 5,
+		DefaultLogging:             false,
 	}
 
 	// If no optional configurations provided, return default configurations
@@ -56,6 +57,11 @@ func validateOptionalConfiguration(optionalConfiguration ...OptionalConfiguratio
 	// Validate and set NumberFuncInWorker value
 	if config.NumberFuncInWorker > 1 {
 		opt.NumberFuncInWorker = config.NumberFuncInWorker
+	}
+
+	// Validate and set DefaultLogging value
+	if config.DefaultLogging == true {
+		opt.DefaultLogging = true
 	}
 
 	return opt

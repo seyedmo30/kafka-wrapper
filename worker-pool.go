@@ -119,10 +119,10 @@ serviceLoop:
 		case res := <-response:
 			logger.Debug("send firstfunc signal ", "name_worker", w.name)
 
-			if !res.isSuccess && res.readMessageDTO.Retry < w.optionalConfiguration.Retry {
-				res.readMessageDTO.Retry++
-				logger.Debug("retry ", "name_worker", w.name, "msg", string(res.readMessageDTO.Value), "retry", res.readMessageDTO.Retry)
-				w.workQueue <- res.readMessageDTO
+			if !res.IsSuccess && res.ReadMessageDTO.Retry < w.optionalConfiguration.Retry {
+				res.ReadMessageDTO.Retry++
+				logger.Debug("retry ", "name_worker", w.name, "msg", string(res.ReadMessageDTO.Value), "retry", res.ReadMessageDTO.Retry)
+				w.workQueue <- res.ReadMessageDTO
 
 			}
 			<-concurrentRunFunction
@@ -149,5 +149,5 @@ serviceLoop:
 	}
 
 	wgFunc.Wait()
-	
+
 }
