@@ -5,7 +5,7 @@ import (
 	"math/rand"
 	"time"
 
-	"git.revue.ir/neo/backend/libs/kafka-wrapper/pkg"
+	"github.com/seyedmo30/kafka-wrapper/pkg"
 )
 
 func mockFirstClassFunc(ctx context.Context, workQueue chan ReadMessageDTO, resultQueue chan WriteMessageDTO, errorChannel chan error, response chan ResponseDTO) {
