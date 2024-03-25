@@ -2,7 +2,6 @@ package pkg
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"reflect"
 	"strings"
@@ -174,7 +173,6 @@ func MetadataLogger(messageValue []byte) {
 	// if err != nil {
 	// 	errMsg = err.Error()
 	// }
-	fmt.Println("ss")
 	var messageStruct Message
 
 	err := json.Unmarshal(messageValue, &messageStruct)
