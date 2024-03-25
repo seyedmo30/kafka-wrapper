@@ -1,0 +1,28 @@
+header
+
+{
+	"kafka_replyPartition": "0",
+	"kafka_correlationId": "38cdf166-2afc-4665-91fb-9e8d0dbca20f",
+	"kafka_replyTopic": "upg.8f2742bf80df8787607a8b4477525527.openAPI.kavenegar.send-otp-sms.reply"
+}
+
+
+value
+
+{
+	"metadata": {
+		"correlationId": "7aa2e146-8dd6-47ed-81c1-088843413a54",
+		"parentCorrelationId": "7aa2e146-8dd6-47ed-81c1-088843413a54",
+		"deviceId": "upg",
+		"device": {},
+		"parentSpan": "",
+		"userId": "",
+		"apiKey": "",
+		"apiKeyName": ""
+	},
+	"payload": {
+		"receptor": "09387870801",
+		"token": "34855",
+		"template": "upg_login_otp"
+	}
+}

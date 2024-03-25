@@ -3,7 +3,6 @@ package kafkawrapper
 import (
 	"context"
 	"errors"
-	"os"
 	"runtime"
 	"sync"
 	"time"
@@ -52,24 +51,33 @@ func (w *worker) start(ctx context.Context) {
 	var wgFunc sync.WaitGroup
 	defer close(concurrentRunFunction)
 
-	go func() {
+	// go func() {
 
-		<-ctx.Done()
-		for {
+	// 	<-ctx.Done()
+	// 	for {
 
-			time.Sleep(time.Second)
+	// 		time.Sleep(time.Second)
+	// 		if len(w.workQueue) == 0 && len(w.resultQueue) == 0 && len(w.errorChannel) == 0 {
+	// 			logger.Info("all channel are empty and graceful exit")
+	// 			os.Exit(0)
+	// 		}
+	// 		logger.Debug("wait for empty channel : ", "workQueue", len(w.workQueue), "resultQueue", len(w.resultQueue), "err", len(w.errorChannel))
+
+	// 	}
+	// }()
+
+serviceLoop:
+	for {
+
+		select {
+		case <-ctx.Done():
 			if len(w.workQueue) == 0 && len(w.resultQueue) == 0 && len(w.errorChannel) == 0 {
 				logger.Info("all channel are empty and graceful exit")
-				os.Exit(0)
+				break serviceLoop
 			}
-			logger.Debug("wait for empty channel : ", "workQueue", len(w.workQueue), "resultQueue", len(w.resultQueue), "err", len(w.errorChannel))
-
+		default:
+			// Do Nothing
 		}
-	}()
-
-	for {
-		
-
 		for {
 
 			// "ReadMessageDTO chan is empty"
@@ -111,10 +119,10 @@ func (w *worker) start(ctx context.Context) {
 		case res := <-response:
 			logger.Debug("send firstfunc signal ", "name_worker", w.name)
 
-			if !res.isSuccess && res.readMessageDTO.Retry < w.optionalConfiguration.Retry {
-				res.readMessageDTO.Retry++
-				logger.Debug("retry ", "name_worker", w.name, "msg", string(res.readMessageDTO.Value), "retry", res.readMessageDTO.Retry)
-				w.workQueue <- res.readMessageDTO
+			if !res.IsSuccess && res.ReadMessageDTO.Retry < w.optionalConfiguration.Retry {
+				res.ReadMessageDTO.Retry++
+				logger.Debug("retry ", "name_worker", w.name, "msg", string(res.ReadMessageDTO.Value), "retry", res.ReadMessageDTO.Retry)
+				w.workQueue <- res.ReadMessageDTO
 
 			}
 			<-concurrentRunFunction
@@ -139,7 +147,7 @@ func (w *worker) start(ctx context.Context) {
 		logger.Debug("htop ===>", "Alloc-MB", m.Alloc/1024/1024, "TotalAlloc-MB", m.TotalAlloc/1024/1024, "Sys-MB", m.Sys/1024/1024, "NumGC", m.NumGC, "NumGoroutine", runtime.NumGoroutine())
 
 	}
-	
+
 	wgFunc.Wait()
 
 }

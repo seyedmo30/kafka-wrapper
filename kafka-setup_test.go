@@ -25,12 +25,12 @@ func TestKafkaConsumerSetup(t *testing.T) {
 
 func TestConsumerConnection_Success(t *testing.T) {
 	socket := "10.21.15.99:21692"
-	topic := "_test5"
-	groupID := "3"
+	topic := "_test1"
+	groupID := "fsdsdewf"
 
 	consumer := KafkaConsumerSetup(socket, topic, groupID)
 
-	err := consumer.consumerConnection()
+	err := consumer.consumerConnection(OptionalConfiguration{})
 
 	assert.NoError(t, err, "Expected no error during Kafka connection")
 	for i := 1; ; i++ {
@@ -54,7 +54,7 @@ func TestConsumerConnection_Failure(t *testing.T) {
 
 	consumer := KafkaConsumerSetup(socket, topic, groupID)
 
-	err := consumer.consumerConnection()
+	err := consumer.consumerConnection(OptionalConfiguration{})
 
 	assert.Error(t, err, "Expected ervror during Kafka connection")
 
@@ -65,7 +65,7 @@ func TestPublisherConnection_Success(t *testing.T) {
 	topic := "_test1"
 	publisher := KafkaPublisherSetup(socket, topic)
 
-	err := publisher.publisherConnection()
+	err := publisher.publisherConnection(OptionalConfiguration{})
 
 	assert.NoError(t, err, "Expected no error during Kafka connection")
 
@@ -95,12 +95,12 @@ func TestKafkaIntegration(t *testing.T) {
 	defer publisher.close()
 
 	// Connect Kafka consumer
-	if err := consumer.consumerConnection(); err != nil {
+	if err := consumer.consumerConnection(OptionalConfiguration{}); err != nil {
 		t.Fatalf("Failed to connect consumer: %v", err)
 	}
 
 	// Connect Kafka publisher
-	if err := publisher.publisherConnection(); err != nil {
+	if err := publisher.publisherConnection(OptionalConfiguration{}); err != nil {
 		t.Fatalf("Failed to connect publisher: %v", err)
 	}
 

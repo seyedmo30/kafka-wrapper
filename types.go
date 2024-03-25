@@ -21,8 +21,8 @@ type WriteMessageDTO struct {
 }
 
 type ResponseDTO struct {
-	isSuccess      bool
-	readMessageDTO ReadMessageDTO
+	IsSuccess      bool
+	ReadMessageDTO ReadMessageDTO
 }
 
 type OptionalConfiguration struct {
@@ -33,6 +33,7 @@ type OptionalConfiguration struct {
 	ErrorChannelBufferSize     uint8
 	ConsumerChannelBufferSize  uint8
 	PublisherChannelBufferSize uint8
+	DefaultLogging             bool
 }
 
 type FirstClassFunc func(ctx context.Context, readMessageCh chan ReadMessageDTO, writeMessageCh chan WriteMessageDTO, errCh chan error, response chan ResponseDTO)
