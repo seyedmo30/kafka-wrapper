@@ -1,4 +1,4 @@
-module git.revue.ir/neo/backend/libs/kafka-wrapper
+module github.com/seyedmo30/kafka-wrapper
 
 go 1.22.0
 
