@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	"git.revue.ir/neo/backend/libs/kafka-wrapper/pkg"
+	"git.maani.app/maani/backend/kafka-wrapper/pkg"
 	kafkaPachage "github.com/segmentio/kafka-go"
 	"github.com/segmentio/kafka-go/protocol"
 )
@@ -60,7 +60,9 @@ func (k *kafkaConsumer) getter(ctx context.Context) (ReadMessageDTO, error) {
 			headers = append(headers, Header{Key: header.Key, Value: header.Value})
 
 		}
-
+		// if k.optionalConfiguration.DefaultLogging {
+		// pkg.MetadataLogger(msg.Value)
+		// }
 		return ReadMessageDTO{Key: msg.Key, Value: msg.Value, Headers: headers}, err
 
 	}
