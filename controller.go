@@ -70,7 +70,7 @@ func consumerController(ctx context.Context, kafkaConsumer kafkaConsumer, errCh 
 	readMessageDTOCh := make(chan ReadMessageDTO, opt.ConsumerChannelBufferSize)
 	for {
 
-		err := kafkaConsumer.consumerConnection()
+		err := kafkaConsumer.consumerConnection(opt)
 
 		if err != nil {
 			logger.Error("kafka Consumer cant connect", "external_error", err.Error())
@@ -112,7 +112,7 @@ func consumerController(ctx context.Context, kafkaConsumer kafkaConsumer, errCh 
 
 							time.Sleep(5 * time.Second)
 
-							if err = kafkaConsumer.consumerConnection(); err == nil {
+							if err = kafkaConsumer.consumerConnection(opt); err == nil {
 								break
 							}
 							logger.Error("kafka Consumer cant connect", "external_error", err.Error())
@@ -140,7 +140,7 @@ func publisherController(ctx context.Context, kafkaPublisher kafkaPublisher, err
 
 	for {
 
-		err := kafkaPublisher.publisherConnection()
+		err := kafkaPublisher.publisherConnection(opt)
 
 		if err != nil {
 			// TODO
@@ -171,7 +171,7 @@ func publisherController(ctx context.Context, kafkaPublisher kafkaPublisher, err
 
 						time.Sleep(5 * time.Second)
 
-						if err = kafkaPublisher.publisherConnection(); err == nil {
+						if err = kafkaPublisher.publisherConnection(opt); err == nil {
 							break
 						}
 						logger.Error("kafka Consumer cant connect", "external_error", err.Error())

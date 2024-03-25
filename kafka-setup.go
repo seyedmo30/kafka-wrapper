@@ -3,9 +3,9 @@ package kafkawrapper
 import (
 	"context"
 	"errors"
-	"log/slog"
 	"time"
 
+	"git.revue.ir/neo/backend/libs/kafka-wrapper/pkg"
 	kafkaPachage "github.com/segmentio/kafka-go"
 	"github.com/segmentio/kafka-go/protocol"
 )
@@ -16,6 +16,7 @@ type kafkaConsumer struct {
 	topic                 string               // Topic to consume messages from
 	groupID               string               // Consumer group ID
 	kafkaConsumerinstance *kafkaPachage.Reader // Kafka reader instance
+	optionalConfiguration OptionalConfiguration
 }
 
 // KafkaConsumerSetup initializes and returns a new KafkaConsumer instance.
@@ -28,6 +29,7 @@ type kafkaPublisher struct {
 	socket                 string               // Kafka broker address
 	topic                  string               // Topic to publish messages to
 	kafkaPublisherinstance *kafkaPachage.Writer // Kafka writer instance
+	optionalConfiguration  OptionalConfiguration
 }
 
 // KafkaPublisherSetup initializes and returns a new KafkaPublisher instance.
@@ -49,7 +51,7 @@ func (k *kafkaConsumer) getter(ctx context.Context) (ReadMessageDTO, error) {
 		if err == nil {
 			err = k.kafkaConsumerinstance.CommitMessages(ctx, msg)
 			if err != nil {
-				logger.Error("kafka cant commit msg", "key", msg.Key)
+				logger.Error("kafka cant commit msg", "key", msg.Key, "err", err.Error())
 			}
 
 		}
@@ -66,11 +68,11 @@ func (k *kafkaConsumer) getter(ctx context.Context) (ReadMessageDTO, error) {
 
 // close closes the KafkaConsumer instance.
 func (k *kafkaConsumer) close() error {
-	slog.Info("before close Consumer connection")
+	logger.Info("before close Consumer connection")
 	err := k.kafkaConsumerinstance.Close()
 	if err == nil {
 
-		slog.Info(" Consumer connection closed success")
+		logger.Info(" Consumer connection closed success")
 	}
 	return err
 
@@ -78,7 +80,7 @@ func (k *kafkaConsumer) close() error {
 
 // close closes the KafkaPublisher instance.
 func (k *kafkaPublisher) close() error {
-	slog.Info("before close Publisher connection")
+	logger.Info("before close Publisher connection")
 	return k.kafkaPublisherinstance.Close()
 }
 
@@ -89,17 +91,34 @@ func (k *kafkaPublisher) setter(ctx context.Context, msg WriteMessageDTO) error 
 	for _, v := range msg.Headers {
 		headers = append(headers, protocol.Header{Key: v.Key, Value: v.Value})
 	}
-	slog.Debug("before WriteMessages", "Key : ", msg.Key)
+	logger.Debug("before WriteMessages", "Key : ", msg.Key)
 
-	return k.kafkaPublisherinstance.WriteMessages(ctx, kafkaPachage.Message{
+	err := k.kafkaPublisherinstance.WriteMessages(ctx, kafkaPachage.Message{
 		Key:     msg.Key,
 		Value:   msg.Value,
 		Headers: headers,
 	})
+
+	if k.optionalConfiguration.DefaultLogging {
+		errMsg := ""
+		if err != nil {
+			errMsg = err.Error()
+		}
+		log := pkg.StdLog{
+			Error: errMsg,
+		}
+
+		log.Log(errMsg)
+
+	}
+	return err
+
 }
 
 // publisherConnection establishes a connection to Kafka for publishing messages.
-func (k *kafkaPublisher) publisherConnection() error {
+func (k *kafkaPublisher) publisherConnection(opt OptionalConfiguration) error {
+	k.optionalConfiguration = opt
+
 	dialer := &kafkaPachage.Dialer{
 		Timeout:   10 * time.Second,
 		DualStack: true,
@@ -128,7 +147,8 @@ func (k *kafkaPublisher) publisherConnection() error {
 }
 
 // consumerConnection establishes a connection to Kafka for consuming messages.
-func (k *kafkaConsumer) consumerConnection() error {
+func (k *kafkaConsumer) consumerConnection(opt OptionalConfiguration) error {
+	k.optionalConfiguration = opt
 	dialer := &kafkaPachage.Dialer{
 		Timeout:   10 * time.Second,
 		DualStack: true,
