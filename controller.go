@@ -2,81 +2,186 @@ package kafkawrapper
 
 import (
 	"context"
-	"fmt"
 	"strings"
+	"time"
 )
 
-func Run(ctx context.Context, kafkaConsumer kafkaConsumer, method FirstClassFunc, kafkaPubliosher kafkaPublisher, optionalConfiguration ...OptionalConfiguration) {
-
+func Run(ctx context.Context, kafkaConsumer kafkaConsumer, method FirstClassFunc, kafkaPublisher kafkaPublisher, optionalConfiguration ...OptionalConfiguration) chan error {
 	opt := validateOptionalConfiguration(optionalConfiguration...)
-	readMessageDTOCh := make(chan ReadMessageDTO, 50)
-	writeMessageDTOCh := make(chan WriteMessageDTO, 50)
-	errorChannel := make(chan error, 50)
-	err := kafkaConsumer.consumerConnection()
+	errCh := make(chan error, opt.ErrorChannelBufferSize)
+	go func() {
 
-	if err != nil {
-		// TODO
-		logs().Error("kafka cunsumer cant coonect : " + err.Error())
-		panic("please ckeck cunsumer connection ")
+		readMessageDTOCh := consumerController(ctx, kafkaConsumer, errCh, opt)
+
+		writeMessageDTOCh := publisherController(ctx, kafkaPublisher, errCh, opt)
+
+		// worker pool
+		var i uint8
+
+		for i = 0; i < opt.Worker; i++ {
+			nameWorker := kafkaConsumer.topic + "_to_" + kafkaPublisher.topic
+			w := newWorker(i+1, nameWorker, method, readMessageDTOCh, writeMessageDTOCh, errCh, opt)
+			go w.start(ctx)
+
+		}
+	}()
+	return errCh
+}
+
+func RunOnlyPublisher(ctx context.Context, kafkaPublisher kafkaPublisher, writeMessageCh chan WriteMessageDTO, optionalConfiguration ...OptionalConfiguration) chan error {
+	opt := validateOptionalConfiguration(optionalConfiguration...)
+
+	errCh := make(chan error, opt.ErrorChannelBufferSize)
+
+	writeMessageDTOCh := publisherController(ctx, kafkaPublisher, errCh, opt)
+	go func() {
+
+		for writeMessage := range writeMessageCh {
+
+			writeMessageDTOCh <- writeMessage
+		}
+		// worker pool
+	}()
+	return errCh
+}
+
+func RunOnlyConsumer(ctx context.Context, kafkaConsumer kafkaConsumer, method FirstClassFuncOnlyConsumer, optionalConfiguration ...OptionalConfiguration) chan error {
+	opt := validateOptionalConfiguration(optionalConfiguration...)
+	errCh := make(chan error, opt.ErrorChannelBufferSize)
+	go func() {
+
+		readMessageDTOCh := consumerController(ctx, kafkaConsumer, errCh, opt)
+
+		// worker pool
+		var i uint8
+
+		for i = 0; i < opt.Worker; i++ {
+			nameWorker := "only_consumer_" + kafkaConsumer.topic
+			w := newWorkerOnlyConsumer(i+1, nameWorker, method, readMessageDTOCh, errCh, opt)
+			go w.start(ctx)
+
+		}
+	}()
+	return errCh
+}
+
+func consumerController(ctx context.Context, kafkaConsumer kafkaConsumer, errCh chan error, opt OptionalConfiguration) chan ReadMessageDTO {
+
+	readMessageDTOCh := make(chan ReadMessageDTO, opt.ConsumerChannelBufferSize)
+	for {
+
+		err := kafkaConsumer.consumerConnection()
+
+		if err != nil {
+			logger.Error("kafka Consumer cant connect", "external_error", err.Error())
+
+			errCh <- err
+			time.Sleep(5 * time.Second)
+		} else {
+			break
+		}
 	}
-
-	err = kafkaPubliosher.publisherConnection()
-
-	if err != nil {
-		// TODO
-		logs().Error("kafka publisher cant coonect : " + err.Error())
-		panic("please ckeck publisher connection ")
-	}
+	logger.Info("kafkaConsumer success : " + kafkaConsumer.topic)
 
 	// consumer
 	go func() {
 		defer close(readMessageDTOCh)
 
 		for {
-			fmt.Println("start read msg")
-			msg, err := kafkaConsumer.getter().KafkaReader.ReadMessage(ctx)
-			fmt.Println(string(msg.Value))
 
-			if err != nil {
-				logs().Error("kafka cant read message : " + err.Error())
-				if strings.Contains(err.Error(), "network is unreachable") {
-					logs().Error("network is unreachable : " + err.Error())
-					//  TODO
-					_ = kafkaConsumer.consumerReconnection()
+			select {
+			case <-ctx.Done():
+				if err := kafkaConsumer.close(); err != nil {
+					logger.Debug(err.Error())
 
 				}
-				continue
-			}
-			headers := make([]Header, 0, 1)
-			for _, header := range msg.Headers {
-				headers = append(headers, Header{Key: header.Key})
+				select {}
+			default:
+				logger.Debug("start read msg", "topic", kafkaConsumer.topic)
+
+				msg, err := kafkaConsumer.getter(ctx)
+
+				if err != nil {
+					logger.Error("kafka cant read message ", "external_error", err.Error(), "topic", kafkaConsumer.topic)
+					errCh <- err
+
+					if strings.Contains(err.Error(), "connection refused") {
+						for {
+
+							errCh <- err
+
+							time.Sleep(5 * time.Second)
+
+							if err = kafkaConsumer.consumerConnection(); err == nil {
+								break
+							}
+							logger.Error("kafka Consumer cant connect", "external_error", err.Error())
+						}
+
+					}
+					continue
+				}
+				headers := make([]Header, 0, 1)
+				for _, header := range msg.Headers {
+					headers = append(headers, Header{Key: header.Key})
+
+				}
+				readMessageDTOCh <- ReadMessageDTO{Key: msg.Key, Value: msg.Value, Headers: headers}
+				logger.Debug("msg send to chan ReadMessageDTO success :", "value", string(msg.Value))
 
 			}
-			readMessageDTOCh <- ReadMessageDTO{Key: msg.Key, Value: msg.Value, Headers: headers}
-
 		}
 	}()
+	return readMessageDTOCh
+}
+
+func publisherController(ctx context.Context, kafkaPublisher kafkaPublisher, errCh chan error, opt OptionalConfiguration) chan WriteMessageDTO {
+	writeMessageDTOCh := make(chan WriteMessageDTO, opt.PublisherChannelBufferSize)
+
+	for {
+
+		err := kafkaPublisher.publisherConnection()
+
+		if err != nil {
+			// TODO
+			logger.Error("kafka publisher cant connect", "external_error", err.Error())
+
+			errCh <- err
+			time.Sleep(5 * time.Second)
+		} else {
+			break
+		}
+	}
+
+	logger.Info("kafkaPublisher success : " + kafkaPublisher.topic)
 
 	// publisher
 	go func() {
 		defer close(writeMessageDTOCh)
 
 		for message := range writeMessageDTOCh {
-			if err := kafkaPubliosher.setter(ctx, message); err != nil {
-				logs().Warn(err.Error())
+			if err := kafkaPublisher.setter(context.Background(), message); err != nil {
+				logger.Error("kafka Consumer cant connect", "external_error", err.Error())
+				errCh <- err
 
+				if strings.Contains(err.Error(), "connection refused") {
+					for {
+
+						errCh <- err
+
+						time.Sleep(5 * time.Second)
+
+						if err = kafkaPublisher.publisherConnection(); err == nil {
+							break
+						}
+						logger.Error("kafka Consumer cant connect", "external_error", err.Error())
+					}
+
+				}
 			}
 		}
 
 	}()
 
-	// worker pool
-	for i := 0; i < opt.Worker; i++ {
-
-		w := newWorker(i+1, 10, method, readMessageDTOCh, writeMessageDTOCh, errorChannel)
-		go w.start(ctx)
-
-	}
-
-	select {}
+	return writeMessageDTOCh
 }

@@ -1,4 +1,4 @@
-module github.com/seyedmo30/kafka-wrapper
+module git.revue.ir/neo/backend/libs/kafka-wrapper
 
 go 1.22.0
 
@@ -12,6 +12,7 @@ require (
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
+	github.com/lmittmann/tint v1.0.4 // indirect
 )
 
 require (

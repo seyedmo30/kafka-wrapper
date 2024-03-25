@@ -3,11 +3,40 @@ package kafkawrapper
 import (
 	"os"
 	"sync"
+	"time"
 
-	"go.uber.org/zap/zapcore"
+	"log/slog"
 
+	"github.com/lmittmann/tint"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
+
+var logger *slog.Logger
+
+func init() {
+
+	env := os.Getenv("ENVIRONMENT")
+
+	if env == "development" {
+
+		// for develop
+
+		logger = slog.New(tint.NewHandler(os.Stderr, &tint.Options{
+			AddSource:  true,
+			Level:      slog.LevelDebug,
+			TimeFormat: time.Kitchen,
+		}))
+
+	} else {
+
+		logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+			Level: slog.LevelError,
+		}))
+
+	}
+
+}
 
 var logsOnce sync.Once
 

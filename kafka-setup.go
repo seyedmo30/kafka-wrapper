@@ -2,111 +2,104 @@ package kafkawrapper
 
 import (
 	"context"
-
+	"errors"
+	"log/slog"
 	"time"
 
 	kafkaPachage "github.com/segmentio/kafka-go"
+	"github.com/segmentio/kafka-go/protocol"
 )
 
+// kafkaConsumer represents a Kafka consumer.
 type kafkaConsumer struct {
-	socket  string
-	topic   string
-	groupID string
+	socket                string               // Kafka broker address
+	topic                 string               // Topic to consume messages from
+	groupID               string               // Consumer group ID
+	kafkaConsumerinstance *kafkaPachage.Reader // Kafka reader instance
 }
 
+// KafkaConsumerSetup initializes and returns a new KafkaConsumer instance.
 func KafkaConsumerSetup(Socket string, Topic string, GroupID string) kafkaConsumer {
-
 	return kafkaConsumer{socket: Socket, topic: Topic, groupID: GroupID}
-
 }
 
+// kafkaPublisher represents a Kafka publisher.
 type kafkaPublisher struct {
-	socket string
-	topic  string
+	socket                 string               // Kafka broker address
+	topic                  string               // Topic to publish messages to
+	kafkaPublisherinstance *kafkaPachage.Writer // Kafka writer instance
 }
 
+// KafkaPublisherSetup initializes and returns a new KafkaPublisher instance.
 func KafkaPublisherSetup(Socket string, Topic string) kafkaPublisher {
-
 	return kafkaPublisher{socket: Socket, topic: Topic}
-
 }
 
-type kafkaReader struct {
-	KafkaReader *kafkaPachage.Reader
+// getter reads a message from Kafka.
+func (k *kafkaConsumer) getter(ctx context.Context) (ReadMessageDTO, error) {
+
+	select {
+	case <-ctx.Done():
+		k.close()
+		return ReadMessageDTO{}, errors.New("connection close")
+
+	default:
+
+		msg, err := k.kafkaConsumerinstance.ReadMessage(ctx)
+		if err == nil {
+			err = k.kafkaConsumerinstance.CommitMessages(ctx, msg)
+			if err != nil {
+				logger.Error("kafka cant commit msg", "key", msg.Key)
+			}
+
+		}
+		headers := make([]Header, 0, 1)
+		for _, header := range msg.Headers {
+			headers = append(headers, Header{Key: header.Key, Value: header.Value})
+
+		}
+
+		return ReadMessageDTO{Key: msg.Key, Value: msg.Value, Headers: headers}, err
+
+	}
 }
 
-var kafkaConsumerinstance kafkaReader
-
-type kafkaWriter struct {
-	KafkaWriter *kafkaPachage.Writer
-}
-
-var kafkaPublisherinstance kafkaWriter
-
-func (k *kafkaConsumer) getter() kafkaReader {
-
-	return kafkaConsumerinstance
-}
-
-func (k kafkaPublisher) getter() kafkaWriter {
-
-	return kafkaPublisherinstance
-}
-
+// close closes the KafkaConsumer instance.
 func (k *kafkaConsumer) close() error {
+	slog.Info("before close Consumer connection")
+	err := k.kafkaConsumerinstance.Close()
+	if err == nil {
 
-	k.getter().KafkaReader.Close()
-	return nil
+		slog.Info(" Consumer connection closed success")
+	}
+	return err
 
 }
+
+// close closes the KafkaPublisher instance.
 func (k *kafkaPublisher) close() error {
-
-	defer k.getter().KafkaWriter.Close()
-	// kafkaPachage.ACL
-	// kafkaPachage.Client
-
-	// // Set up Kafka client configuration
-	// config := kafka.WriterConfig{
-	// 	Brokers: []string{"localhost:9092"}, // Kafka broker address
-	// }
-
-	// // Create a new Kafka client
-	// client := kafka.NewWriter(config)
-
-	// // Create a new Admin client
-	// adminClient := kafka.NewAdminClient(&kafka.Dialer{
-	// 	Timeout: 10, // Timeout in seconds
-	// })
-
-	// // Specify the topic to delete
-	// topicToDelete := "topic_name"
-
-	// // Delete the specified topic
-	// err := adminClient.DeleteTopics(topicToDelete)
-	// if err != nil {
-	// 	fmt.Fprintf(os.Stderr, "Error deleting topic: %v\n", err)
-	// 	os.Exit(1)
-	// }
-
-	// fmt.Printf("Topic '%s' deleted successfully.\n", topicToDelete)
-
-	// // Close the Kafka and Admin clients
-	// adminClient.Close()
-	// client.Close()
-
-	return nil
+	slog.Info("before close Publisher connection")
+	return k.kafkaPublisherinstance.Close()
 }
 
-func (k kafkaPublisher) setter(ctx context.Context, msg WriteMessageDTO) error {
+// setter writes a message to Kafka.
+func (k *kafkaPublisher) setter(ctx context.Context, msg WriteMessageDTO) error {
 
-	return kafkaPublisherinstance.KafkaWriter.WriteMessages(ctx, kafkaPachage.Message{
-		Key:   msg.Key,
-		Value: msg.Value,
+	headers := make([]protocol.Header, len(msg.Headers))
+	for _, v := range msg.Headers {
+		headers = append(headers, protocol.Header{Key: v.Key, Value: v.Value})
+	}
+	slog.Debug("before WriteMessages", "Key : ", msg.Key)
+
+	return k.kafkaPublisherinstance.WriteMessages(ctx, kafkaPachage.Message{
+		Key:     msg.Key,
+		Value:   msg.Value,
+		Headers: headers,
 	})
 }
 
-func (k kafkaPublisher) publisherConnection() error {
-
+// publisherConnection establishes a connection to Kafka for publishing messages.
+func (k *kafkaPublisher) publisherConnection() error {
 	dialer := &kafkaPachage.Dialer{
 		Timeout:   10 * time.Second,
 		DualStack: true,
@@ -115,24 +108,27 @@ func (k kafkaPublisher) publisherConnection() error {
 	// Attempt to dial the Kafka broker
 	connDail, err := dialer.Dial("tcp", k.socket)
 	if err != nil {
-		logs().Error("Failed to connect to Kafka: \n" + err.Error())
+		logger.Error("Failed to connect to publisher Kafka  ", "external_error", err.Error())
 		return err
 	}
 
+	// Close the connection after dialing
 	connDail.Close()
+
+	// Create a new Kafka writer instance
 	conn := kafkaPachage.NewWriter(kafkaPachage.WriterConfig{
 		Brokers: []string{k.socket},
-		// Partition: partition,
-		Topic: k.topic,
+		Topic:   k.topic,
 	})
 
-	kafkaPublisherinstance.KafkaWriter = conn
+	// Assign the Kafka writer instance to the kafkaPublisherinstance
+	k.kafkaPublisherinstance = conn
 
 	return nil
 }
 
+// consumerConnection establishes a connection to Kafka for consuming messages.
 func (k *kafkaConsumer) consumerConnection() error {
-
 	dialer := &kafkaPachage.Dialer{
 		Timeout:   10 * time.Second,
 		DualStack: true,
@@ -141,25 +137,24 @@ func (k *kafkaConsumer) consumerConnection() error {
 	// Attempt to dial the Kafka broker
 	connDail, err := dialer.Dial("tcp", k.socket)
 	if err != nil {
-		logs().Error("Failed to connect to Kafka: \n" + err.Error())
+		logger.Error("Failed to connect to consumer Kafka  ", "external_error", err.Error())
+
 		return err
 	}
 
+	// Close the connection after dialing
 	connDail.Close()
+
+	// Create a new Kafka reader instance
 	conn := kafkaPachage.NewReader(kafkaPachage.ReaderConfig{
-		Brokers: []string{k.socket},
-		GroupID: k.groupID,
-		// Partition: partition,
+		Brokers:  []string{k.socket},
+		GroupID:  k.groupID,
 		Topic:    k.topic,
 		MaxBytes: 10e6, // 10MB
 	})
 
-	kafkaConsumerinstance.KafkaReader = conn
+	// Assign the Kafka reader instance to the kafkaConsumerinstance
+	k.kafkaConsumerinstance = conn
 
-	return nil
-}
-
-func (k *kafkaConsumer) consumerReconnection() error {
-	// TODO
 	return nil
 }
