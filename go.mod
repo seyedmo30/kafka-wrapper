@@ -1,4 +1,4 @@
-module git.maani.app/maani/backend/kafka-wrapper
+module github.com/seyedmo30/kafka-wrapper
 
 go 1.22.0
 

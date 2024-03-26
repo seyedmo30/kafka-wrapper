@@ -68,7 +68,7 @@ func mockPublisher() chan WriteMessageDTO {
 
 		for {
 
-			gen := generateWriteMessage(generateRandomString(2))
+			gen := generateWriteMessageBymetadataHeader(generateRandomString(2))
 			writeMessageCh <- gen
 			logger.Debug("send success to topic", "msg", string(gen.Key))
 		}
@@ -102,6 +102,36 @@ func generateWriteMessage(pre string) WriteMessageDTO {
 
 		Key:   []byte(pre + "___" + generateRandomString(2)),
 		Value: []byte(pre + "___" + generateRandomString(2)),
+	}
+}
+
+func generateWriteMessageBymetadataHeader(pre string) WriteMessageDTO {
+	time.Sleep(time.Second * time.Duration(rand.Intn(2)+1))
+	h := make([]Header, 0, 5)
+	h = append(h, Header{Key: "kafka_correlationId", Value: []byte("2003ef91-1363-4155-8c7f-9f24f377630e")})
+	h = append(h, Header{Key: "kafka_replyTopic", Value: []byte("upg.a36530b561672653ef6505f25c3f0498.openAPI.kavenegar.send-otp-sms.reply")})
+	h = append(h, Header{Key: "kafka_replyTopic", Value: []byte("0")})
+	return WriteMessageDTO{
+
+		Key: []byte(pre + "___" + generateRandomString(2)),
+		Value: []byte(`{
+			"metadata": {
+				"correlationId": "bced1d10-d4b8-4813-8c0a-77ea9cd05696",
+				"parentCorrelationId": "bced1d10-d4b8-4813-8c0a-77ea9cd05696",
+				"deviceId": "upg",
+				"device": {},
+				"parentSpan": "",
+				"userId": "",
+				"apiKey": "",
+				"apiKeyName": ""
+			},
+			"payload": {
+				"receptor": "09387870801",
+				"token": "41399",
+				"template": "upg_login_otp"
+			}
+		}`),
+		Headers: h,
 	}
 }
 

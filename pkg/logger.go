@@ -18,13 +18,6 @@ func init() {
 		Level: slog.LevelInfo,
 	})
 
-	// for develop
-	// h := tint.NewHandler(os.Stderr, &tint.Options{
-	// 	AddSource:  true,
-	// 	Level:      slog.LevelDebug,
-	// 	TimeFormat: time.Kitchen,
-	// })
-
 	logger = slog.New(h)
 
 }
@@ -126,7 +119,6 @@ type Metadata struct {
 	KafkaProcess        interface{} `json:"kafkaProcess"`
 	KafkaDuration       int         `json:"kafkaDuration,omitempty"`
 	DBModel             string      `json:"dbModel,omitempty"`
-	DBArgs              string      `json:"dbArgs,omitempty"`
 	DBAction            string      `json:"dbAction,omitempty"`
 	DBDuration          int         `json:"dbDuration,omitempty"`
 	DBRunInTransaction  bool        `json:"dbRunInTransaction,omitempty"`
@@ -135,17 +127,9 @@ type Metadata struct {
 	ParentCorrelationID string      `json:"parentCorrelationId,omitempty"`
 }
 
-// Payload represents the payload fields in the JSON.
-type Payload struct {
-	Receptor string `json:"receptor"`
-	Token    string `json:"token"`
-	Template string `json:"template"`
-}
-
 // Message represents the entire JSON structure.
 type Message struct {
 	Metadata Metadata `json:"metadata"`
-	Payload  Payload  `json:"payload"`
 }
 
 func (l *StdLog) Log(mainMessage string) {
@@ -164,7 +148,7 @@ func (l *StdLog) Log(mainMessage string) {
 			mapList = append(mapList, tag, value)
 		}
 	}
-	logger.Error(mainMessage, mapList...)
+	logger.Info(mainMessage, mapList...)
 }
 
 func MetadataLogger(messageValue []byte) {
@@ -185,57 +169,56 @@ func MetadataLogger(messageValue []byte) {
 	stdLog.Log(errMsg)
 }
 
-func MapStdLogToMetadata(stdLog Metadata) StdLog {
+func MapStdLogToMetadata(metadata Metadata) StdLog {
 	return StdLog{
-		Error:               stdLog.Error,
-		ErrorType:           stdLog.ErrorType,
-		ErrorStack:          stdLog.ErrorStack,
-		ErrorDescription:    stdLog.ErrorDescription,
-		ErrorStatus:         stdLog.ErrorStatus,
-		ErrorStatusText:     stdLog.ErrorStatusText,
-		ErrorIssuer:         stdLog.ErrorIssuer,
-		ErrorMethode:        stdLog.ErrorMethode,
-		ErrorFileName:       stdLog.ErrorFileName,
-		ErrorLineNumber:     stdLog.ErrorLineNumber,
-		UserID:              stdLog.UserID,
-		Username:            stdLog.Username,
-		NationalID:          stdLog.NationalID,
-		Span:                stdLog.Span,
-		ParentSpan:          stdLog.ParentSpan,
-		DeviceIP:            stdLog.DeviceIP,
-		DeviceIsAndroid:     stdLog.DeviceIsAndroid,
-		DeviceID:            stdLog.DeviceID,
-		DeviceLoginIP:       stdLog.DeviceLoginIP,
-		DeviceManufacturer:  stdLog.DeviceManufacturer,
-		DeviceSystem:        stdLog.DeviceSystem,
-		DeviceUserAgent:     stdLog.DeviceUserAgent,
-		DeviceModel:         stdLog.DeviceModel,
-		AppVersion:          stdLog.AppVersion,
-		Type:                stdLog.Type,
-		Payload:             stdLog.Payload,
-		Message:             stdLog.Message,
-		ReqMethod:           stdLog.ReqMethod,
-		ReqURL:              stdLog.ReqURL,
-		ReqParams:           stdLog.ReqParams,
-		ReqQuery:            stdLog.ReqQuery,
-		ReqHeaders:          stdLog.ReqHeaders,
-		ResHeaders:          stdLog.ResHeaders,
-		ResDuration:         stdLog.ResDuration,
-		ResBody:             stdLog.ResBody,
-		ResStatus:           stdLog.ResStatus,
-		ResStatusText:       stdLog.ResStatusText,
-		Process:             stdLog.Process,
-		KafkaTime:           stdLog.KafkaTime,
-		KafkaTopic:          stdLog.KafkaTopic,
-		KafkaProcess:        stdLog.KafkaProcess,
-		KafkaDuration:       stdLog.KafkaDuration,
-		DBModel:             stdLog.DBModel,
-		DBArgs:              stdLog.DBArgs,
-		DBAction:            stdLog.DBAction,
-		DBDuration:          stdLog.DBDuration,
-		DBRunInTransaction:  stdLog.DBRunInTransaction,
-		APIKey:              stdLog.APIKey,
-		APIKeyName:          stdLog.APIKeyName,
-		ParentCorrelationID: stdLog.ParentCorrelationID,
+		Error:               metadata.Error,
+		ErrorType:           metadata.ErrorType,
+		ErrorStack:          metadata.ErrorStack,
+		ErrorDescription:    metadata.ErrorDescription,
+		ErrorStatus:         metadata.ErrorStatus,
+		ErrorStatusText:     metadata.ErrorStatusText,
+		ErrorIssuer:         metadata.ErrorIssuer,
+		ErrorMethode:        metadata.ErrorMethode,
+		ErrorFileName:       metadata.ErrorFileName,
+		ErrorLineNumber:     metadata.ErrorLineNumber,
+		UserID:              metadata.UserID,
+		Username:            metadata.Username,
+		NationalID:          metadata.NationalID,
+		Span:                metadata.Span,
+		ParentSpan:          metadata.ParentSpan,
+		DeviceIP:            metadata.DeviceIP,
+		DeviceIsAndroid:     metadata.DeviceIsAndroid,
+		DeviceID:            metadata.DeviceID,
+		DeviceLoginIP:       metadata.DeviceLoginIP,
+		DeviceManufacturer:  metadata.DeviceManufacturer,
+		DeviceSystem:        metadata.DeviceSystem,
+		DeviceUserAgent:     metadata.DeviceUserAgent,
+		DeviceModel:         metadata.DeviceModel,
+		AppVersion:          metadata.AppVersion,
+		Type:                metadata.Type,
+		Payload:             metadata.Payload,
+		Message:             metadata.Message,
+		ReqMethod:           metadata.ReqMethod,
+		ReqURL:              metadata.ReqURL,
+		ReqParams:           metadata.ReqParams,
+		ReqQuery:            metadata.ReqQuery,
+		ReqHeaders:          metadata.ReqHeaders,
+		ResHeaders:          metadata.ResHeaders,
+		ResDuration:         metadata.ResDuration,
+		ResBody:             metadata.ResBody,
+		ResStatus:           metadata.ResStatus,
+		ResStatusText:       metadata.ResStatusText,
+		Process:             metadata.Process,
+		KafkaTime:           metadata.KafkaTime,
+		KafkaTopic:          metadata.KafkaTopic,
+		KafkaProcess:        metadata.KafkaProcess,
+		KafkaDuration:       metadata.KafkaDuration,
+		DBModel:             metadata.DBModel,
+		DBAction:            metadata.DBAction,
+		DBDuration:          metadata.DBDuration,
+		DBRunInTransaction:  metadata.DBRunInTransaction,
+		APIKey:              metadata.APIKey,
+		APIKeyName:          metadata.APIKeyName,
+		ParentCorrelationID: metadata.ParentCorrelationID,
 	}
 }

@@ -5,9 +5,9 @@ import (
 	"errors"
 	"time"
 
-	"git.maani.app/maani/backend/kafka-wrapper/pkg"
 	kafkaPachage "github.com/segmentio/kafka-go"
 	"github.com/segmentio/kafka-go/protocol"
+	"github.com/seyedmo30/kafka-wrapper/pkg"
 )
 
 // kafkaConsumer represents a Kafka consumer.
@@ -60,9 +60,9 @@ func (k *kafkaConsumer) getter(ctx context.Context) (ReadMessageDTO, error) {
 			headers = append(headers, Header{Key: header.Key, Value: header.Value})
 
 		}
-		// if k.optionalConfiguration.DefaultLogging {
-		// pkg.MetadataLogger(msg.Value)
-		// }
+		if k.optionalConfiguration.DefaultLogging {
+			pkg.MetadataLogger(msg.Value)
+		}
 		return ReadMessageDTO{Key: msg.Key, Value: msg.Value, Headers: headers}, err
 
 	}
@@ -100,18 +100,8 @@ func (k *kafkaPublisher) setter(ctx context.Context, msg WriteMessageDTO) error 
 		Value:   msg.Value,
 		Headers: headers,
 	})
-
 	if k.optionalConfiguration.DefaultLogging {
-		errMsg := ""
-		if err != nil {
-			errMsg = err.Error()
-		}
-		log := pkg.StdLog{
-			Error: errMsg,
-		}
-
-		log.Log(errMsg)
-
+		pkg.MetadataLogger(msg.Value)
 	}
 	return err
 
