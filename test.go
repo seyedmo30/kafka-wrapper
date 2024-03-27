@@ -78,11 +78,11 @@ func mockPublisher() chan WriteMessageDTO {
 
 func mockFirstClassFuncOnlyConsumer(ctx context.Context, workQueue chan ReadMessageDTO, errorChannel chan error, response chan ResponseDTO) {
 	read := <-workQueue
-	if rand.Intn(5) == 1 {
+	if rand.Intn(20) == 1 {
 		panic("Something went wrong!")
 
 	}
-	if rand.Intn(5) == 1 {
+	if rand.Intn(10) == 1 {
 		response <- ResponseDTO{IsSuccess: false, ReadMessageDTO: read}
 
 	} else {
@@ -107,10 +107,12 @@ func generateWriteMessage(pre string) WriteMessageDTO {
 
 func generateWriteMessageBymetadataHeader(pre string) WriteMessageDTO {
 	time.Sleep(time.Second * time.Duration(rand.Intn(2)+1))
-	h := make([]Header, 0, 5)
-	h = append(h, Header{Key: "kafka_correlationId", Value: []byte("2003ef91-1363-4155-8c7f-9f24f377630e")})
-	h = append(h, Header{Key: "kafka_replyTopic", Value: []byte("upg.a36530b561672653ef6505f25c3f0498.openAPI.kavenegar.send-otp-sms.reply")})
-	h = append(h, Header{Key: "kafka_replyTopic", Value: []byte("0")})
+	h := []Header{
+		{Key: "kafka_correlationId", Value: []byte("2003ef91-1363-4155-8c7f-9f24f377630e")},
+		{Key: "kafka_replyTopic", Value: []byte("upg.a36530b561672653ef6505f25c3f0498.openAPI.kavenegar.send-otp-sms.reply")},
+		{Key: "kafka_replyPartition", Value: []byte("0")},
+	}
+
 	return WriteMessageDTO{
 
 		Key: []byte(pre + "___" + generateRandomString(2)),

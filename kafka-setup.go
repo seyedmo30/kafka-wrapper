@@ -55,10 +55,9 @@ func (k *kafkaConsumer) getter(ctx context.Context) (ReadMessageDTO, error) {
 			}
 
 		}
-		headers := make([]Header, 0, 1)
+		headers := make([]Header, 0)
 		for _, header := range msg.Headers {
 			headers = append(headers, Header{Key: header.Key, Value: header.Value})
-
 		}
 		if k.optionalConfiguration.DefaultLogging {
 			pkg.MetadataLogger(msg.Value)
@@ -89,7 +88,7 @@ func (k *kafkaPublisher) close() error {
 // setter writes a message to Kafka.
 func (k *kafkaPublisher) setter(ctx context.Context, msg WriteMessageDTO) error {
 
-	headers := make([]protocol.Header, len(msg.Headers))
+	headers := make([]protocol.Header, 0, len(msg.Headers))
 	for _, v := range msg.Headers {
 		headers = append(headers, protocol.Header{Key: v.Key, Value: v.Value})
 	}

@@ -121,12 +121,8 @@ func consumerController(ctx context.Context, kafkaConsumer kafkaConsumer, errCh 
 					}
 					continue
 				}
-				headers := make([]Header, 0, 1)
-				for _, header := range msg.Headers {
-					headers = append(headers, Header{Key: header.Key})
 
-				}
-				readMessageDTOCh <- ReadMessageDTO{Key: msg.Key, Value: msg.Value, Headers: headers}
+				readMessageDTOCh <- msg
 				logger.Debug("msg send to chan ReadMessageDTO success :", "value", string(msg.Value))
 
 			}
